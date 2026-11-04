@@ -1,0 +1,180 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api, { getErrorMessage } from '../../utils/api'
+
+const Checkout = () => {
+  const [bookingData, setBookingData] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [promoCode, setPromoCode] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('Card')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const data = sessionStorage.getItem('bookingData')
+    if (!data) {
+      navigate('/')
+      return
+    }
+    const parsed = JSON.parse(data)
+    setBookingData(parsed)
+    
+    // Get preview
+    api.post('/bookings/preview', {
+      trip_id: parsed.trip_id,
+      seat_ids: parsed.seats.map(s => s.seat_id),
+      passenger_names: parsed.seats.map(s => s.passenger_name),
+      passenger_genders: parsed.seats.map(s => s.passenger_gender)
+    })
+      .then(res => setPreview(res.data))
+      .catch(err => setError(getErrorMessage(err, 'Could not prepare your booking.')))
+      .finally(() => setLoading(false))
+  }, [navigate])
+
+  const handlePromoCode = async () => {
+    if (!promoCode) return
+    try {
+      await api.post('/promocodes/validate', {
+        code: promoCode,
+        route_id: preview.trip.routeId
+      })
+      // Recalculate preview with promo
+      const newPreview = await api.post('/bookings/preview', {
+        trip_id: bookingData.trip_id,
+        seat_ids: bookingData.seats.map(s => s.seat_id),
+        passenger_names: bookingData.seats.map(s => s.passenger_name),
+        passenger_genders: bookingData.seats.map(s => s.passenger_gender),
+        promo_code: promoCode
+      })
+      setPreview(newPreview.data)
+    } catch (err) {
+      alert(getErrorMessage(err, 'Invalid promo code'))
+    }
+  }
+
+  const handleConfirm = async () => {
+    try {
+      const res = await api.post('/bookings/confirm', {
+        trip_id: bookingData.trip_id,
+        seat_ids: bookingData.seats.map(s => s.seat_id),
+        passenger_names: bookingData.seats.map(s => s.passenger_name),
+        passenger_genders: bookingData.seats.map(s => s.passenger_gender),
+        promo_code: promoCode || null,
+        payment_method: paymentMethod
+      })
+      sessionStorage.removeItem('bookingData')
+      navigate(`/booking/${res.data.bookingId}/confirmation`)
+    } catch (err) {
+      alert(getErrorMessage(err, 'Booking failed'))
+    }
+  }
+
+  if (error) {
+    return <div className="container"><div className="error">{error}</div></div>
+  }
+
+  if (loading || !preview) {
+    return <div className="loading">Loading...</div>
+  }
+
+  return (
+    <div className="container">
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ 
+          fontSize: '2rem',
+          marginBottom: '0.5rem',
+          color: 'var(--text-primary)',
+          fontWeight: 700,
+          letterSpacing: '-0.01em'
+        }}>
+          Checkout
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 400 }}>Review and confirm your booking</p>
+      </div>
+      <div className="card">
+        <h2>Trip Details</h2>
+        <p><strong>Route:</strong> {preview.trip.fromCity} → {preview.trip.toCity}</p>
+        <p><strong>Fare per seat:</strong> PKR {preview.trip.farePerSeat}</p>
+      </div>
+
+      <div className="card">
+        <h2>Selected Seats</h2>
+        {preview.seats.map((seat, idx) => (
+          <p key={idx}>Seat - {seat.passengerName} ({seat.passengerGender})</p>
+        ))}
+      </div>
+
+      <div className="card">
+        <h2>Promo Code</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            placeholder="Enter promo code"
+            style={{ flex: 1, padding: '8px' }}
+          />
+          <button className="btn btn-secondary" onClick={handlePromoCode}>Apply</button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Payment</h2>
+        <div className="form-group">
+          <label>Payment Method</label>
+          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+            <option value="Card">Card</option>
+            <option value="JazzCash">JazzCash</option>
+            <option value="Easypaisa">Easypaisa</option>
+            <option value="CashOnCounter">Cash on Counter</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="card fade-in" style={{ 
+        background: 'var(--surface-muted)',
+        border: '1px solid var(--border-hover)'
+      }}>
+        <h2 style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          Summary
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '0.75rem' }}>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Base Amount:</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>PKR {preview.pricing.baseAmount.toLocaleString()}</span>
+          </div>
+          {preview.pricing.discountAmount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--success)', marginBottom: '0.75rem' }}>
+              <span style={{ fontWeight: 500 }}>Discount:</span>
+              <span style={{ fontWeight: 600 }}>-PKR {preview.pricing.discountAmount.toLocaleString()}</span>
+            </div>
+          )}
+          <div style={{ 
+            marginTop: '1rem',
+            paddingTop: '1rem',
+            borderTop: '1px solid var(--border-color)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Total:</span>
+            <span style={{ 
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: 'var(--primary-bright)'
+            }}>
+              PKR {preview.pricing.finalAmount.toLocaleString()}
+            </span>
+          </div>
+        </div>
+        <button className="btn btn-primary" onClick={handleConfirm} style={{ width: '100%' }}>
+          Confirm Booking
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default Checkout
+
