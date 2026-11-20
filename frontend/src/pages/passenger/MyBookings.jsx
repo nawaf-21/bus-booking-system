@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api, { getErrorMessage } from '../../utils/api'
 import Invoice from '../../components/Invoice'
+import Modal from '../../components/Modal'
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedBooking, setSelectedBooking] = useState(null)
+  // The booking the passenger is writing a review for
+  const [reviewBooking, setReviewBooking] = useState(null)
+  const [rating, setRating] = useState(5)
+  const [comments, setComments] = useState('')
 
   useEffect(() => {
     api.get('/bookings/my')
@@ -20,11 +25,35 @@ const MyBookings = () => {
     if (!confirm('Are you sure you want to cancel this booking?')) return
     try {
       await api.post(`/bookings/${bookingId}/cancel`)
-      setBookings(bookings.filter(b => b.booking_id !== bookingId))
+      // Keep it in the list, but show it as cancelled and refunded
+      setBookings(prev => prev.map(b => b.booking_id === bookingId
+        ? { ...b, booking_status: 'Cancelled', payment_status: 'Refunded' }
+        : b))
       alert('Booking cancelled successfully')
     } catch (err) {
       alert(err.response?.data?.error || 'Cancellation failed')
     }
+  }
+
+  const handleReview = async (e) => {
+    e.preventDefault()
+    try {
+      await api.post(`/feedback/trips/${reviewBooking.trip_id}`, { rating: Number(rating), comments })
+      setBookings(prev => prev.map(b => b.trip_id === reviewBooking.trip_id ? { ...b, has_review: 1 } : b))
+      setReviewBooking(null)
+      setRating(5)
+      setComments('')
+      alert('Thank you for your review!')
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not save your review'))
+    }
+  }
+
+  // Badge colours for each booking status
+  const statusColor = (status) => {
+    if (status === 'Confirmed') return { background: 'var(--success-soft)', color: 'var(--success)' }
+    if (status === 'Pending') return { background: 'var(--accent-soft)', color: 'var(--primary)' }
+    return { background: 'var(--danger-soft)', color: 'var(--danger)' }
   }
 
   if (error) {
@@ -86,19 +115,16 @@ const MyBookings = () => {
                       fontSize: '14px',
                       color: 'var(--primary)'
                     }}>
-                      {booking.total_seats} Seats
+                      {booking.total_seats} {booking.total_seats === 1 ? 'Seat' : 'Seats'}
                     </span>
                     <span style={{ 
                       padding: '6px 14px',
-                      background: booking.booking_status === 'Confirmed' 
-                        ? 'var(--success-soft)'
-                        : 'var(--danger-soft)',
+                      ...statusColor(booking.booking_status),
                       borderRadius: '20px',
                       fontWeight: 600,
-                      fontSize: '14px',
-                      color: booking.booking_status === 'Confirmed' ? 'var(--success)' : 'var(--danger)'
+                      fontSize: '14px'
                     }}>
-                      {booking.booking_status === 'Confirmed' ? 'Confirmed' : 'Cancelled'}
+                      {booking.booking_status}
                     </span>
                   </div>
                   <p style={{ 
@@ -129,12 +155,50 @@ const MyBookings = () => {
                     Cancel Booking
                   </button>
                 )}
+                {/* A trip can be reviewed once, after the bus has left */}
+                {booking.booking_status === 'Confirmed' && new Date(booking.departure_datetime) < new Date() && (
+                  booking.has_review ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Reviewed</span>
+                  ) : (
+                    <button className="btn btn-secondary" onClick={() => setReviewBooking(booking)}>
+                      Rate Trip
+                    </button>
+                  )
+                )}
               </div>
             </div>
           </div>
         ))
       )}
       
+      <Modal isOpen={reviewBooking !== null} onClose={() => setReviewBooking(null)} title="Rate your trip" size="small">
+        {reviewBooking && (
+          <form onSubmit={handleReview}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+              {reviewBooking.route_name} with {reviewBooking.company_name}
+            </p>
+            <div className="form-group">
+              <label>Rating</label>
+              <select value={rating} onChange={(e) => setRating(e.target.value)}>
+                <option value="5">5 - Excellent</option>
+                <option value="4">4 - Good</option>
+                <option value="3">3 - Okay</option>
+                <option value="2">2 - Poor</option>
+                <option value="1">1 - Very bad</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Comments (optional)</label>
+              <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows="3" maxLength="500" />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="submit" className="btn btn-primary">Submit Review</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setReviewBooking(null)}>Close</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
       {selectedBooking && (
         <Invoice 
           booking={selectedBooking} 

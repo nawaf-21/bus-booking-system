@@ -73,7 +73,12 @@ const Home = () => {
               <label>From</label>
               <select
                 value={searchData.from_city_id}
-                onChange={(e) => setSearchData({ ...searchData, from_city_id: e.target.value })}
+                onChange={(e) => {
+                  const from = e.target.value;
+                  // From and To can't be the same city, so clear To if it matches
+                  const to = searchData.to_city_id === from ? '' : searchData.to_city_id;
+                  setSearchData({ ...searchData, from_city_id: from, to_city_id: to });
+                }}
                 required
               >
                 <option value="">Select City</option>
@@ -90,7 +95,7 @@ const Home = () => {
                 required
               >
                 <option value="">Select City</option>
-                {cities.map(city => (
+                {cities.filter(city => String(city.city_id) !== String(searchData.from_city_id)).map(city => (
                   <option key={city.city_id} value={city.city_id}>{city.city_name}</option>
                 ))}
               </select>
@@ -101,7 +106,7 @@ const Home = () => {
                 type="date"
                 value={searchData.travel_date}
                 onChange={(e) => setSearchData({ ...searchData, travel_date: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
+                min={new Date().toLocaleDateString('en-CA')}
               />
             </div>
             <div className="form-group">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api, { getErrorMessage } from '../../utils/api'
+import { useAuth } from '../../context/AuthContext'
 
 const TripResults = () => {
   const [trips, setTrips] = useState([])
@@ -8,6 +9,9 @@ const TripResults = () => {
   const [error, setError] = useState('')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  // Trips whose route was saved to favourites on this page
+  const [savedTrips, setSavedTrips] = useState([])
 
   useEffect(() => {
     const params = {}
@@ -25,6 +29,15 @@ const TripResults = () => {
         setTrips([])
       })
   }, [searchParams])
+
+  const handleSaveRoute = async (trip) => {
+    try {
+      await api.post('/favourites/routes', { route_id: trip.route_id, preferred_company_id: trip.company_id })
+      setSavedTrips([...savedTrips, trip.trip_id])
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not save this route'))
+    }
+  }
 
   const handleSelectTrip = (tripId) => {
     navigate(`/trips/${tripId}/seats`)
@@ -116,6 +129,16 @@ const TripResults = () => {
                 >
                   {trip.seats_available === 0 ? 'Sold Out' : 'Select Seats'}
                 </button>
+                {user?.role === 'Passenger' && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleSaveRoute(trip)}
+                    disabled={savedTrips.includes(trip.trip_id)}
+                    style={{ width: '100%', marginTop: '8px' }}
+                  >
+                    {savedTrips.includes(trip.trip_id) ? 'Saved to Favourites' : 'Save Route'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

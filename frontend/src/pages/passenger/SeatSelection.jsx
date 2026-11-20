@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api, { getErrorMessage } from '../../utils/api'
 
@@ -32,6 +32,10 @@ const SeatSelection = () => {
       delete newData[seat.seat_id]
       setPassengerData(newData)
     } else {
+      if (selectedSeats.length >= 6) {
+        alert('You can book at most 6 seats at a time')
+        return
+      }
       setSelectedSeats([...selectedSeats, seat])
       setPassengerData({
         ...passengerData,
@@ -51,7 +55,7 @@ const SeatSelection = () => {
     // Validate all selected seats have passenger data
     const allValid = selectedSeats.every(seat => {
       const data = passengerData[seat.seat_id]
-      return data && data.name && data.gender
+      return data && data.name.trim() && data.gender
     })
 
     if (!allValid) {
@@ -64,7 +68,7 @@ const SeatSelection = () => {
       trip_id: id,
       seats: selectedSeats.map(seat => ({
         seat_id: seat.seat_id,
-        passenger_name: passengerData[seat.seat_id].name,
+        passenger_name: passengerData[seat.seat_id].name.trim(),
         passenger_gender: passengerData[seat.seat_id].gender
       }))
     }))
@@ -77,6 +81,17 @@ const SeatSelection = () => {
 
   if (loading) {
     return <div className="loading">Loading seat map...</div>
+  }
+
+  // A trip that has left or was cancelled can't be booked
+  const bookable = !trip || (trip.trip_status === 'Scheduled' && new Date(trip.departure_datetime) > new Date())
+  if (!bookable) {
+    return (
+      <div className="container">
+        <div className="error">This trip is no longer available for booking.</div>
+        <button className="btn btn-secondary" onClick={() => navigate('/')}>Search other trips</button>
+      </div>
+    )
   }
 
   // Group seats by row
@@ -124,8 +139,16 @@ const SeatSelection = () => {
             Available
           </span>
           <span style={{ marginRight: '25px', display: 'inline-flex', alignItems: 'center' }}>
+            <span className="seat-swatch booked-female"></span>
+            Booked (Female)
+          </span>
+          <span style={{ marginRight: '25px', display: 'inline-flex', alignItems: 'center' }}>
+            <span className="seat-swatch booked-male"></span>
+            Booked (Male)
+          </span>
+          <span style={{ marginRight: '25px', display: 'inline-flex', alignItems: 'center' }}>
             <span className="seat-swatch booked"></span>
-            Booked
+            Not available
           </span>
           <span style={{ marginRight: '25px', display: 'inline-flex', alignItems: 'center' }}>
             <span className="seat-swatch selected"></span>
@@ -136,31 +159,34 @@ const SeatSelection = () => {
         <div className="seat-map">
           {Object.keys(seatsByRow).sort((a, b) => Number(a) - Number(b) || a.localeCompare(b)).map(row => (
             <div key={row} className="seat-row">
-              <span style={{ 
-                minWidth: '30px', 
-                fontWeight: 700, 
-                color: 'var(--text-secondary)',
-                fontSize: '14px'
-              }}>
-                Row {row}
-              </span>
-              {seatsByRow[row].map(seat => {
+              <span className="seat-row-label">Row {row}</span>
+              {seatsByRow[row].map((seat, index) => {
                 const isSelected = selectedSeats.some(s => s.seat_id === seat.seat_id)
-                const seatClass = seat.seat_status === 'Booked' 
-                  ? 'seat booked' 
-                  : isSelected 
-                    ? 'seat selected' 
-                    : 'seat available'
+                let seatClass = 'seat available'
+                let title = seat.seat_number
+                if (seat.seat_status === 'Booked') {
+                  // Booked seats show who is sitting there: pink for a woman, blue for a man.
+                  // Seats held by the admin (Neutral) stay grey.
+                  if (seat.booked_gender === 'Female') seatClass = 'seat booked booked-female'
+                  else if (seat.booked_gender === 'Male') seatClass = 'seat booked booked-male'
+                  else seatClass = 'seat booked'
+                  title = `${seat.seat_number} - booked${seat.booked_gender && seat.booked_gender !== 'Neutral' ? ` (${seat.booked_gender})` : ''}`
+                } else if (isSelected) {
+                  seatClass = 'seat selected'
+                }
                 return (
-                  <button
-                    key={seat.seat_id}
-                    onClick={() => toggleSeat(seat)}
-                    disabled={seat.seat_status === 'Booked'}
-                    className={seatClass}
-                    title={seat.seat_number}
-                  >
-                    {seat.seat_number}
-                  </button>
+                  <Fragment key={seat.seat_id}>
+                    {/* The aisle: 2 seats on the left, 2 on the right */}
+                    {index === 2 && <span className="seat-aisle"></span>}
+                    <button
+                      onClick={() => toggleSeat(seat)}
+                      disabled={seat.seat_status === 'Booked'}
+                      className={seatClass}
+                      title={title}
+                    >
+                      {seat.seat_number}
+                    </button>
+                  </Fragment>
                 )
               })}
             </div>
@@ -188,6 +214,7 @@ const SeatSelection = () => {
                   <input
                     type="text"
                     placeholder="Enter passenger full name"
+                    maxLength="100"
                     value={passengerData[seat.seat_id]?.name || ''}
                     onChange={(e) => handlePassengerDataChange(seat.seat_id, 'name', e.target.value)}
                     required

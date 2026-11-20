@@ -410,10 +410,10 @@ const Invoice = ({ booking, onClose }) => {
             </p>
             <p style={{ margin: '5px 0', color: '#495057', fontSize: '13px' }}>
               <strong>Payment Status:</strong> <span style={{
-                color: (booking.booking_status === 'Confirmed' || booking.amount_paid_pkr > 0) ? '#1f7a5a' : '#b42318',
+                color: booking.payment_status === 'Success' ? '#1f7a5a' : '#b42318',
                 fontWeight: 600
               }}>
-                {(booking.booking_status === 'Confirmed' || booking.amount_paid_pkr > 0) ? 'Paid' : 'Pending'}
+                {booking.payment_status === 'Success' ? 'Paid' : (booking.payment_status || 'Pending')}
               </span>
             </p>
             {(booking.payment_datetime || booking.booking_datetime) && (

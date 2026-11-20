@@ -6,6 +6,9 @@ const Checkout = () => {
   const [bookingData, setBookingData] = useState(null)
   const [preview, setPreview] = useState(null)
   const [promoCode, setPromoCode] = useState('')
+  // The promo code that was checked and is included in the price shown
+  const [appliedPromo, setAppliedPromo] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('Card')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -32,46 +35,66 @@ const Checkout = () => {
       .finally(() => setLoading(false))
   }, [navigate])
 
+  const getPreview = (code) => api.post('/bookings/preview', {
+    trip_id: bookingData.trip_id,
+    seat_ids: bookingData.seats.map(s => s.seat_id),
+    passenger_names: bookingData.seats.map(s => s.passenger_name),
+    passenger_genders: bookingData.seats.map(s => s.passenger_gender),
+    promo_code: code
+  })
+
   const handlePromoCode = async () => {
-    if (!promoCode) return
+    const code = promoCode.trim().toUpperCase()
+    if (!code) return
     try {
-      await api.post('/promocodes/validate', {
-        code: promoCode,
-        route_id: preview.trip.routeId
-      })
-      // Recalculate preview with promo
-      const newPreview = await api.post('/bookings/preview', {
-        trip_id: bookingData.trip_id,
-        seat_ids: bookingData.seats.map(s => s.seat_id),
-        passenger_names: bookingData.seats.map(s => s.passenger_name),
-        passenger_genders: bookingData.seats.map(s => s.passenger_gender),
-        promo_code: promoCode
-      })
+      // The preview checks the code for this trip and works out the discount
+      const newPreview = await getPreview(code)
       setPreview(newPreview.data)
+      setAppliedPromo(code)
+      setPromoCode(code)
     } catch (err) {
       alert(getErrorMessage(err, 'Invalid promo code'))
     }
   }
 
+  const handleRemovePromo = async () => {
+    try {
+      const newPreview = await getPreview(null)
+      setPreview(newPreview.data)
+      setAppliedPromo(null)
+      setPromoCode('')
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not remove the promo code'))
+    }
+  }
+
   const handleConfirm = async () => {
+    if (submitting) return
+    setSubmitting(true)
     try {
       const res = await api.post('/bookings/confirm', {
         trip_id: bookingData.trip_id,
         seat_ids: bookingData.seats.map(s => s.seat_id),
         passenger_names: bookingData.seats.map(s => s.passenger_name),
         passenger_genders: bookingData.seats.map(s => s.passenger_gender),
-        promo_code: promoCode || null,
+        promo_code: appliedPromo,
         payment_method: paymentMethod
       })
       sessionStorage.removeItem('bookingData')
       navigate(`/booking/${res.data.bookingId}/confirmation`)
     } catch (err) {
       alert(getErrorMessage(err, 'Booking failed'))
+      setSubmitting(false)
     }
   }
 
   if (error) {
-    return <div className="container"><div className="error">{error}</div></div>
+    return (
+      <div className="container">
+        <div className="error">{error}</div>
+        <button className="btn btn-secondary" onClick={() => navigate(-1)}>Back to seat selection</button>
+      </div>
+    )
   }
 
   if (loading || !preview) {
@@ -101,7 +124,7 @@ const Checkout = () => {
       <div className="card">
         <h2>Selected Seats</h2>
         {preview.seats.map((seat, idx) => (
-          <p key={idx}>Seat - {seat.passengerName} ({seat.passengerGender})</p>
+          <p key={idx}>Seat {seat.seatNumber} - {seat.passengerName} ({seat.passengerGender})</p>
         ))}
       </div>
 
@@ -113,9 +136,14 @@ const Checkout = () => {
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value)}
             placeholder="Enter promo code"
+            disabled={appliedPromo !== null}
             style={{ flex: 1, padding: '8px' }}
           />
-          <button className="btn btn-secondary" onClick={handlePromoCode}>Apply</button>
+          {appliedPromo ? (
+            <button className="btn btn-secondary" onClick={handleRemovePromo}>Remove</button>
+          ) : (
+            <button className="btn btn-secondary" onClick={handlePromoCode}>Apply</button>
+          )}
         </div>
       </div>
 
@@ -168,8 +196,8 @@ const Checkout = () => {
             </span>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={handleConfirm} style={{ width: '100%' }}>
-          Confirm Booking
+        <button className="btn btn-primary" onClick={handleConfirm} disabled={submitting} style={{ width: '100%' }}>
+          {submitting ? 'Booking...' : 'Confirm Booking'}
         </button>
       </div>
     </div>

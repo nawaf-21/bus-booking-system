@@ -46,10 +46,10 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/trips/search" element={<TripResults />} />
           <Route path="/trips/:id/seats" element={<SeatSelection />} />
-          <Route path="/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} />
-          <Route path="/booking/:id/confirmation" element={<PrivateRoute><BookingConfirmation /></PrivateRoute>} />
-          <Route path="/my-bookings" element={<PrivateRoute><MyBookings /></PrivateRoute>} />
-          <Route path="/favourites" element={<PrivateRoute><Favourites /></PrivateRoute>} />
+          <Route path="/checkout" element={<PrivateRoute role="Passenger"><Checkout /></PrivateRoute>} />
+          <Route path="/booking/:id/confirmation" element={<PrivateRoute role="Passenger"><BookingConfirmation /></PrivateRoute>} />
+          <Route path="/my-bookings" element={<PrivateRoute role="Passenger"><MyBookings /></PrivateRoute>} />
+          <Route path="/favourites" element={<PrivateRoute role="Passenger"><Favourites /></PrivateRoute>} />
 
           {/* Admin routes */}
           <Route path="/admin" element={<PrivateRoute role="Admin"><AdminDashboard /></PrivateRoute>} />

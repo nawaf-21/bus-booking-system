@@ -123,6 +123,8 @@ const bookingView = (b) => {
     total_seats: b.seats.length,
     total_seats_booked: b.seats.length,
     amount_paid_pkr: b.booking_status === 'Confirmed' ? b.final_amount_pkr : 0,
+    payment_status: b.booking_status === 'Confirmed' ? 'Success' : 'Refunded',
+    has_review: db.feedback.some(f => f.trip_id === b.trip_id && f.user_id === b.user_id) ? 1 : 0,
     payment_datetime: b.booking_datetime,
     passenger_name: user.full_name,
     passenger_email: user.email,
@@ -146,6 +148,11 @@ const feedbackView = (f) => {
 const seatsForTrip = (trip) => {
   const bus = busById(trip.bus_id)
   const booked = bookedSeatIds(trip.trip_id)
+  // Gender of the passenger in each booked seat (for the pink/blue seats)
+  const genders = {}
+  db.bookings
+    .filter(b => b.trip_id === trip.trip_id && b.booking_status === 'Confirmed')
+    .forEach(b => b.seats.forEach(s => { genders[s.seat_id] = s.passenger_gender }))
   return Array.from({ length: bus.total_seats }, (_, i) => {
     const index = i + 1
     const row = Math.ceil(index / 4)
@@ -153,8 +160,10 @@ const seatsForTrip = (trip) => {
     return {
       seat_id: seatId,
       seat_row: row,
-      seat_number: `${row}${'ABCD'[i % 4]}`,
-      seat_status: booked.has(seatId) ? 'Booked' : 'Available'
+      seat_column: (i % 4) + 1,
+      seat_number: `${String.fromCharCode(64 + row)}${(i % 4) + 1}`,
+      seat_status: booked.has(seatId) ? 'Booked' : 'Available',
+      booked_gender: genders[seatId] || null
     }
   })
 }
@@ -281,7 +290,12 @@ const handlers = [
     if (body.seat_ids.some(id => taken.has(id))) fail(400, 'One of the selected seats has just been booked')
     return {
       trip: { routeId: trip.route_id, fromCity: trip.from_city, toCity: trip.to_city, farePerSeat: trip.fare_pkr },
-      seats: body.seat_ids.map((id, i) => ({ seatId: id, passengerName: body.passenger_names[i], passengerGender: body.passenger_genders[i] })),
+      seats: body.seat_ids.map((id, i) => ({
+        seatId: id,
+        seatNumber: seatsForTrip(trip).find(s => s.seat_id === id)?.seat_number,
+        passengerName: body.passenger_names[i],
+        passengerGender: body.passenger_genders[i]
+      })),
       pricing: pricing(trip, body.seat_ids.length, body.promo_code)
     }
   }],
@@ -336,6 +350,26 @@ const handlers = [
         }
       })
     return { favouriteRoutes }
+  }],
+  ['post', '/favourites/routes', (ctx) => {
+    const { body } = ctx
+    const user = currentUser(ctx)
+    const exists = db.favourites.some(f => f.user_id === user.user_id && f.route_id === num(body.route_id) &&
+      f.preferred_company_id === num(body.preferred_company_id))
+    if (exists) fail(400, 'Route is already in favourites')
+    db.favourites.push({ fav_id: nextId(db.favourites, 'fav_id'), user_id: user.user_id,
+      route_id: num(body.route_id), preferred_company_id: num(body.preferred_company_id) })
+    return { message: 'Route added to favourites' }
+  }],
+  ['post', '/feedback/trips/:id', (ctx) => {
+    const { body } = ctx
+    const user = currentUser(ctx)
+    if (db.feedback.some(f => f.trip_id === ctx.id && f.user_id === user.user_id)) {
+      fail(400, 'You have already provided feedback for this trip')
+    }
+    db.feedback.push({ feedback_id: nextId(db.feedback, 'feedback_id'), user_id: user.user_id, trip_id: ctx.id,
+      rating: num(body.rating), comments: body.comments || '', created_at: new Date().toISOString() })
+    return { message: 'Feedback submitted successfully' }
   }],
   ['delete', '/favourites/routes/:id', (ctx) => {
     const user = currentUser(ctx)

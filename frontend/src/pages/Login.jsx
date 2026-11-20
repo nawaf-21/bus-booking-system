@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { DEMO_MODE } from '../utils/api'
 import { QUICK_LOGINS } from '../demo/demoData'
@@ -10,6 +10,7 @@ const Login = () => {
   const [error, setError] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const signIn = async (loginEmail, loginPassword) => {
     setError('')
@@ -22,7 +23,8 @@ const Login = () => {
       } else if (user.role === 'BusCompany') {
         navigate('/company')
       } else {
-        navigate('/')
+        // Go back to the page the passenger was on (for example checkout)
+        navigate(location.state?.from || '/')
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed')
