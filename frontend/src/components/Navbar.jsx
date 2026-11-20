@@ -6,6 +6,22 @@ const NAV_LINKS = {
     { to: '/', label: 'Home', end: true },
     { to: '/my-bookings', label: 'My Bookings' },
     { to: '/favourites', label: 'Favourites' }
+  ],
+  Admin: [
+    { to: '/admin', label: 'Dashboard', end: true },
+    { to: '/admin/users', label: 'Users' },
+    { to: '/admin/companies', label: 'Companies' },
+    { to: '/admin/bookings', label: 'Bookings' },
+    { to: '/admin/trips', label: 'Trips' },
+    { to: '/admin/overrides', label: 'Overrides' }
+  ],
+  BusCompany: [
+    { to: '/company', label: 'Dashboard', end: true },
+    { to: '/company/routes', label: 'Routes' },
+    { to: '/company/buses', label: 'Buses' },
+    { to: '/company/trips/manage', label: 'Manage Trips' },
+    { to: '/company/trips', label: 'View Trips', end: true },
+    { to: '/company/feedback', label: 'Feedback' }
   ]
 }
 
