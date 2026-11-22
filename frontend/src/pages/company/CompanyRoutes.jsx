@@ -124,7 +124,6 @@ const CompanyRoutes = () => {
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         isOpen={showAddModal || showEditModal}
         onClose={() => {
@@ -212,7 +211,6 @@ const CompanyRoutes = () => {
             </form>
       </Modal>
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}

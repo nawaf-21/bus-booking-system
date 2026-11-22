@@ -98,8 +98,8 @@ const AdminDashboard = () => {
           </thead>
           <tbody>
             {overview.topRoutes && overview.topRoutes.length > 0 ? (
-              overview.topRoutes.map(route => (
-                <tr key={route.route_name}>
+              overview.topRoutes.map((route, index) => (
+                <tr key={`${route.route_name}-${index}`}>
                   <td>{route.route_name}</td>
                   <td>{route.total_bookings}</td>
                   <td>{route.total_revenue_pkr?.toLocaleString() || 0}</td>
@@ -129,8 +129,8 @@ const AdminDashboard = () => {
           </thead>
           <tbody>
             {overview.topCompaniesByRevenue && overview.topCompaniesByRevenue.length > 0 ? (
-              overview.topCompaniesByRevenue.map(company => (
-                <tr key={company.company_name}>
+              overview.topCompaniesByRevenue.map((company, index) => (
+                <tr key={`${company.company_name}-${index}`}>
                   <td>{company.company_name}</td>
                   <td>{company.total_bookings}</td>
                   <td>{company.total_revenue_pkr?.toLocaleString() || 0}</td>
@@ -161,8 +161,8 @@ const AdminDashboard = () => {
           </thead>
           <tbody>
             {overview.topCompaniesByRating && overview.topCompaniesByRating.length > 0 ? (
-              overview.topCompaniesByRating.map(company => (
-                <tr key={company.company_name}>
+              overview.topCompaniesByRating.map((company, index) => (
+                <tr key={`${company.company_name}-${index}`}>
                   <td>{company.company_name}</td>
                   <td>{parseFloat(company.average_rating || 0).toFixed(1)} / 5</td>
                   <td>{company.total_ratings || 0}</td>

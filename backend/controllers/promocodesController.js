@@ -61,7 +61,6 @@ const getAllPromoCodes = async (req, res) => {
     }
 };
 
-// Checks used by create and update. Returns an error message, or null if fine.
 const CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
 
 const checkPromoValues = ({ discount_type, discount_value, valid_from, valid_to, max_uses }) => {
@@ -82,7 +81,6 @@ const checkPromoValues = ({ discount_type, discount_value, valid_from, valid_to,
     return null;
 };
 
-// Empty text from a form means "no value"
 const orNull = (value) => (value === undefined || value === null || value === '' ? null : value);
 
 const createPromoCode = async (req, res) => {
@@ -126,7 +124,7 @@ const createPromoCode = async (req, res) => {
             promoId: result.recordset[0].promo_id
         });
     } catch (error) {
-        // 2627 / 2601 = the UNIQUE rule on the code was broken
+        // 2627/2601 = duplicate code
         if (error.number === 2627 || error.number === 2601) {
             return res.status(400).json({ error: 'A promo code with this name already exists' });
         }
@@ -142,7 +140,6 @@ const updatePromoCode = async (req, res) => {
 
         const pool = await getPool();
 
-        // Load the code first: we need its type and dates to check the new values
         const existing = await pool.request()
             .input('promoId', sql.Int, id)
             .query('SELECT discount_type, valid_from, valid_to FROM PromoCodes WHERE promo_id = @promoId');

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../utils/api'
 import Modal from '../../components/Modal'
+import { PASSWORD_RULES, passwordIsValid } from '../../utils/password'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Alert from '../../components/Alert'
 
@@ -74,9 +75,13 @@ const AdminUsers = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // empty password on edit keeps the old one
+    if ((showAddModal || formData.password) && !passwordIsValid(formData.password)) {
+      showAlert('The password must be at least 8 characters, with at least one letter and one number', 'error')
+      return
+    }
     try {
-      // Only bus company users have a company; everyone else gets null
-      // so the old company is cleared when the role changes
+      // only bus company users keep a company
       const submitData = {
         ...formData,
         company_id: formData.role === 'BusCompany' && formData.company_id ? parseInt(formData.company_id) : null,
@@ -207,7 +212,6 @@ const AdminUsers = () => {
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         isOpen={showAddModal || showEditModal}
         onClose={() => {
@@ -244,7 +248,11 @@ const AdminUsers = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required={showAddModal}
+                  maxLength={64}
                 />
+                <small style={{ color: 'var(--text-secondary)' }}>
+                  {PASSWORD_RULES.map(rule => rule.label.toLowerCase()).join(', ')}
+                </small>
               </div>
               <div className="form-group">
                 <label>Phone *</label>
@@ -306,7 +314,6 @@ const AdminUsers = () => {
             </form>
       </Modal>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
@@ -317,7 +324,6 @@ const AdminUsers = () => {
         confirmText={confirmDialog.confirmText || 'Confirm'}
       />
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}

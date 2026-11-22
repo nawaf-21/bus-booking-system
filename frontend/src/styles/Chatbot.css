@@ -1,4 +1,4 @@
-/* Chatbot Toggle Button */
+/* toggle button */
 .chatbot-toggle {
   position: fixed;
   bottom: 2rem;
@@ -27,7 +27,7 @@
   border: 1px solid var(--border-hover);
 }
 
-/* Chatbot Window */
+/* chat window */
 .chatbot-window {
   position: fixed;
   bottom: 5.5rem;
@@ -57,7 +57,6 @@
   }
 }
 
-/* Chatbot Header */
 .chatbot-header {
   background: var(--primary);
   padding: 1.25rem 1.5rem;
@@ -96,7 +95,7 @@
   font-weight: 400;
 }
 
-/* Chatbot Messages */
+/* messages */
 .chatbot-messages {
   flex: 1;
   overflow-y: auto;
@@ -120,7 +119,6 @@
   border-radius: 3px;
 }
 
-/* Message Bubbles */
 .chatbot-message {
   display: flex;
   flex-direction: column;
@@ -168,7 +166,6 @@
   padding: 0 0.5rem;
 }
 
-/* Typing Indicator */
 .typing-indicator {
   display: flex;
   gap: 0.25rem;
@@ -213,7 +210,6 @@
   }
 }
 
-/* Chatbot Input Form */
 .chatbot-input-form {
   display: flex;
   gap: 0.5rem;
@@ -273,7 +269,6 @@
   cursor: not-allowed;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .chatbot-window {
     width: calc(100vw - 2rem);

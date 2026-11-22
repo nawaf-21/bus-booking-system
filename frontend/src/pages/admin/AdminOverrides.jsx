@@ -41,13 +41,11 @@ const AdminOverrides = () => {
   const loadTrips = () => {
     api.get('/admin/trips')
       .then(res => {
-        // Only upcoming scheduled trips can have seats reserved
         setTrips(res.data.trips.filter(t => t.trip_status === 'Scheduled' && new Date(t.departure_datetime) > new Date()))
       })
       .catch(err => console.error('Error loading trips:', err))
   }
 
-  // Load the free seats of the chosen trip
   const loadSeats = (tripId) => {
     setSeats([])
     if (!tripId) return
@@ -177,7 +175,6 @@ const AdminOverrides = () => {
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 400 }}>Force cancel bookings, process refunds, and manually reserve seats</p>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)' }}>
         <button
           className="btn"
@@ -223,7 +220,6 @@ const AdminOverrides = () => {
         </button>
       </div>
 
-      {/* Force Cancel */}
       {activeTab === 'cancel' && (
         <div className="card fade-in">
           <h2>Force Cancel Booking</h2>
@@ -257,7 +253,6 @@ const AdminOverrides = () => {
         </div>
       )}
 
-      {/* Process Refund */}
       {activeTab === 'refund' && (
         <div className="card fade-in">
           <h2>Process Refund</h2>
@@ -270,7 +265,6 @@ const AdminOverrides = () => {
                 required
               >
                 <option value="">Select Booking</option>
-                {/* Only confirmed bookings that were actually paid for can be refunded */}
                 {bookings.filter(b => Number(b.final_amount_pkr) > 0).map(booking => (
                   <option key={booking.booking_id} value={booking.booking_id}>
                     #{booking.booking_id} - {booking.passenger_name} - PKR {parseFloat(booking.final_amount_pkr || 0).toLocaleString()}
@@ -303,7 +297,6 @@ const AdminOverrides = () => {
         </div>
       )}
 
-      {/* Reserve Seat */}
       {activeTab === 'reserve' && (
         <div className="card fade-in">
           <h2>Manually Reserve Seat</h2>
@@ -364,7 +357,6 @@ const AdminOverrides = () => {
         </div>
       )}
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
@@ -375,7 +367,6 @@ const AdminOverrides = () => {
         confirmText={confirmDialog.confirmText || 'Confirm'}
       />
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}

@@ -1,12 +1,7 @@
--- =============================================
--- BASIC INSIGHTS - QUICK CHECKS AFTER WEBSITE ACTIONS
--- Run these in SSMS to show sir that website actions affected the database
--- =============================================
-
 USE TravelBookingDB;
 GO
 
--- 1. See all users (after registering / adding a user from Admin Users)
+-- All users
 SELECT 
     user_id,
     full_name,
@@ -18,8 +13,8 @@ FROM Users
 ORDER BY created_at DESC;
 GO
 
--- 2. Check a specific user by email (change email as needed)
-DECLARE @checkEmail VARCHAR(255) = 'passenger@demo.test'; -- CHANGE THIS
+-- User by email
+DECLARE @checkEmail VARCHAR(255) = 'passenger@demo.test';
 SELECT 
     user_id,
     full_name,
@@ -31,7 +26,7 @@ FROM Users
 WHERE email = @checkEmail;
 GO
 
--- 3. Check a specific user by ID (e.g., after deleting a user from Admin Users)
+-- User by id
 SELECT 
     user_id,
     full_name,
@@ -40,10 +35,10 @@ SELECT
     is_active,
     created_at
 FROM Users
-WHERE user_id = 5;  -- CHANGE THIS to the user_id you deleted/updated
+WHERE user_id = 5;
 GO
 
--- 4. See all bus companies (after adding a company from Admin Companies)
+-- Bus companies
 SELECT 
     company_id,
     company_name,
@@ -55,7 +50,7 @@ FROM BusCompanies
 ORDER BY created_at DESC;
 GO
 
--- 5. Check bookings table (after making a booking on website)
+-- Bookings
 SELECT 
     booking_id,
     user_id,
@@ -68,7 +63,7 @@ FROM Bookings
 ORDER BY booking_datetime DESC;
 GO
 
--- 6. Check booking details (seats) for a specific booking
+-- Seats for one booking
 SELECT 
     bd.booking_detail_id,
     bd.booking_id,
@@ -77,10 +72,10 @@ SELECT
     bd.passenger_gender,
     bd.fare_pkr
 FROM BookingDetails bd
-WHERE bd.booking_id = 1;  -- CHANGE THIS to the booking_id you just created
+WHERE bd.booking_id = 1;
 GO
 
--- 7. See recent payments (after checkout/payment on website)
+-- Recent payments
 SELECT 
     payment_id,
     booking_id,
@@ -93,7 +88,7 @@ FROM Payments
 ORDER BY created_at DESC;
 GO
 
--- 8. See recent feedback (after submitting feedback on website)
+-- Recent feedback
 SELECT 
     f.feedback_id,
     f.user_id,
@@ -105,7 +100,7 @@ FROM Feedback f
 ORDER BY f.created_at DESC;
 GO
 
--- 9. Check favourite routes (after adding a favourite in website)
+-- Favourite routes
 SELECT 
     fav_id,
     user_id,
@@ -116,7 +111,7 @@ FROM FavouriteRoutes
 ORDER BY created_at DESC;
 GO
 
--- 10. Check trips list (to show upcoming trips and their status)
+-- Trips
 SELECT 
     t.trip_id,
     c1.city_name AS from_city,
@@ -132,7 +127,7 @@ INNER JOIN Cities c2 ON r.to_city_id = c2.city_id
 ORDER BY t.departure_datetime DESC;
 GO
 
--- 11. Quick count summary (to show overall numbers)
+-- Counts
 SELECT 'Users' AS TableName, COUNT(*) AS TotalCount FROM Users
 UNION ALL
 SELECT 'BusCompanies', COUNT(*) FROM BusCompanies
@@ -146,7 +141,7 @@ UNION ALL
 SELECT 'Feedback', COUNT(*) FROM Feedback;
 GO
 
--- 12. Recent bookings with route and company (nice combined view)
+-- Recent bookings with route and company
 SELECT TOP 10
     b.booking_id,
     u.full_name AS passenger_name,
@@ -166,6 +161,3 @@ INNER JOIN Buses bus ON t.bus_id = bus.bus_id
 INNER JOIN BusCompanies bc ON bus.company_id = bc.company_id
 ORDER BY b.booking_datetime DESC;
 GO
-
-
-

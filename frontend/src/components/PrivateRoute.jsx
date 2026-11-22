@@ -10,7 +10,7 @@ const PrivateRoute = ({ children, role }) => {
   }
 
   if (!user) {
-    // Remember the page, so we can come back to it after logging in
+    // remember the page so we can come back after login
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 

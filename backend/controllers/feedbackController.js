@@ -11,7 +11,7 @@ const createFeedback = async (req, res) => {
 
         const pool = await getPool();
 
-        // Only someone with a confirmed booking on this trip, after it has left, can review it
+        // only confirmed bookings after departure can review
         const bookingCheck = await pool.request()
             .input('tripId', sql.Int, tripId)
             .input('userId', sql.Int, req.user.userId)
@@ -20,14 +20,14 @@ const createFeedback = async (req, res) => {
                 FROM Bookings b
                 INNER JOIN Trips t ON b.trip_id = t.trip_id
                 WHERE b.trip_id = @tripId AND b.user_id = @userId AND b.status = 'Confirmed'
-                    AND t.departure_datetime < GETDATE()
+                    -- the bus has left, or the company marked the trip as completed
+                    AND (t.departure_datetime < GETDATE() OR t.status = 'Completed')
             `);
 
         if (bookingCheck.recordset.length === 0) {
             return res.status(403).json({ error: 'You can only review trips you have travelled on' });
         }
 
-        // Check if user already gave feedback for this trip
         const existingFeedback = await pool.request()
             .input('tripId', sql.Int, tripId)
             .input('userId', sql.Int, req.user.userId)

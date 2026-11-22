@@ -4,7 +4,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import Alert from '../../components/Alert'
 import Modal from '../../components/Modal'
 
-// A date as YYYY-MM-DD in local time (what a date input needs)
+// en-CA gives YYYY-MM-DD in local time
 const toDateInput = (value) => new Date(value).toLocaleDateString('en-CA')
 
 const emptyForm = () => {
@@ -30,7 +30,7 @@ const AdminPromoCodes = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [editPromo, setEditPromo] = useState(null) // the code being edited, or null
+  const [editPromo, setEditPromo] = useState(null)
   const [formData, setFormData] = useState(emptyForm())
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
   const [alert, setAlert] = useState({ isOpen: false, message: '', type: 'info' })
@@ -52,7 +52,6 @@ const AdminPromoCodes = () => {
     setAlert({ isOpen: true, message, type })
   }
 
-  // Active, Expired, Not started, Used up or Off - worked out from the dates and counts
   const statusOf = (promo) => {
     const now = new Date()
     if (!promo.is_active) return 'Off'
@@ -88,11 +87,11 @@ const AdminPromoCodes = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // The code stays valid until the end of its last day
+    // valid until the end of the last day
     const validTo = `${formData.valid_to}T23:59:59`
     try {
       if (editPromo) {
-        // The code, type, route and company can't change; only these fields
+        // only these fields can be edited
         await api.put(`/promocodes/${editPromo.promo_id}`, {
           description: formData.description,
           discount_value: formData.discount_value,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { PASSWORD_RULES, passwordIsValid } from '../utils/password'
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const Register = () => {
     gender: '',
     phone_no: ''
   })
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -17,6 +19,14 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!passwordIsValid(formData.password)) {
+      setError('Please choose a password that meets all the rules below the password box')
+      return
+    }
+    if (formData.password !== confirmPassword) {
+      setError('The two passwords do not match')
+      return
+    }
     try {
       await register({ ...formData, role: 'Passenger' })
       navigate('/')
@@ -70,9 +80,31 @@ const Register = () => {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              minLength={6}
+              maxLength={64}
               required
             />
+            <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', fontSize: '13px' }}>
+              {PASSWORD_RULES.map(rule => {
+                const ok = rule.test(formData.password)
+                return (
+                  <li key={rule.label} style={{ color: ok ? 'var(--success)' : 'var(--text-muted)' }}>
+                    {ok ? '✓' : '○'} {rule.label}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          <div className="form-group">
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {confirmPassword && confirmPassword !== formData.password && (
+              <small style={{ color: 'var(--danger)' }}>The passwords do not match</small>
+            )}
           </div>
           <div className="form-group">
             <label>Phone Number</label>

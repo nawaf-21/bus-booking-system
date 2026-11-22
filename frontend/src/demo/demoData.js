@@ -1,8 +1,5 @@
-// Sample data for demo mode.
-// Company names are real Pakistani bus operators, used only so the demo looks
-// realistic. All trips, fares, buses, ratings, reviews, contact details and
-// people are made up and do not come from those companies.
-// Dates are generated relative to "now" so trips are always in the future.
+// made-up demo data (company names are real, everything else is fake)
+// dates are relative to now so trips are always in the future
 
 const at = (daysFromNow, hour, minute = 0) => {
   const d = new Date()
@@ -13,15 +10,15 @@ const at = (daysFromNow, hour, minute = 0) => {
 
 const addMinutes = (iso, minutes) => new Date(new Date(iso).getTime() + minutes * 60000).toISOString()
 
-// Where demo changes are kept (cleared when the browser tab closes).
-// Bump the version when the sample data changes so old data is ignored.
-export const DEMO_STORAGE_KEY = 'musafir-demo-data-v2'
+// bump the version when the sample data changes
+export const DEMO_STORAGE_KEY = 'musafir-demo-data-v3'
 
-// One-click logins on the login page in demo mode.
-// Any password works for every demo account; the bus company account
-// (company@demo.test) can be used through the normal email form.
+// all sample accounts use this password
+export const SAMPLE_PASSWORD = 'Musafir123'
+
 export const QUICK_LOGINS = [
-  { label: 'User', email: 'passenger@demo.test' },
+  { label: 'Passenger', email: 'passenger@demo.test' },
+  { label: 'Bus Company', email: 'company@demo.test' },
   { label: 'Admin', email: 'admin@demo.test' }
 ]
 
@@ -70,19 +67,19 @@ export function createSeedData() {
     ({ route_id, company_id, from_city_id, to_city_id, distance_km, approx_duration_min, base_fare_pkr })
 
   const routes = [
-    route(1, 1, 1, 2, 375, 270, 2800),     // Daewoo: Lahore → Islamabad
-    route(2, 1, 2, 1, 375, 270, 2800),     // Daewoo: Islamabad → Lahore
-    route(3, 1, 1, 3, 1210, 1080, 7000),   // Daewoo: Lahore → Karachi
-    route(4, 2, 5, 1, 180, 150, 1300),     // Faisal Movers: Faisalabad → Lahore
-    route(5, 2, 1, 3, 1210, 1140, 6200),   // Faisal Movers: Lahore → Karachi
-    route(6, 3, 7, 1, 380, 300, 2400),     // Skyways: Rawalpindi → Lahore
-    route(7, 4, 1, 2, 375, 285, 2600),     // Road Master: Lahore → Islamabad
-    route(8, 5, 1, 10, 330, 330, 2000),    // Niazi Express: Lahore → Mianwali
-    route(9, 6, 7, 8, 125, 150, 900),      // Kohistan Express: Rawalpindi → Abbottabad
-    route(10, 7, 1, 7, 380, 300, 2300),    // Sania Express: Lahore → Rawalpindi
-    route(11, 8, 4, 1, 340, 300, 2200),    // FMBT: Multan → Lahore
-    route(12, 9, 1, 2, 375, 270, 3000),    // Q Connect: Lahore → Islamabad
-    route(13, 1, 1, 4, 340, 300, 2500)     // Daewoo: Lahore → Multan
+    route(1, 1, 1, 2, 375, 270, 2800),
+    route(2, 1, 2, 1, 375, 270, 2800),
+    route(3, 1, 1, 3, 1210, 1080, 7000),
+    route(4, 2, 5, 1, 180, 150, 1300),
+    route(5, 2, 1, 3, 1210, 1140, 6200),
+    route(6, 3, 7, 1, 380, 300, 2400),
+    route(7, 4, 1, 2, 375, 285, 2600),
+    route(8, 5, 1, 10, 330, 330, 2000),
+    route(9, 6, 7, 8, 125, 150, 900),
+    route(10, 7, 1, 7, 380, 300, 2300),
+    route(11, 8, 4, 1, 340, 300, 2200),
+    route(12, 9, 1, 2, 375, 270, 3000),
+    route(13, 1, 1, 4, 340, 300, 2500)
   ]
 
   const bus = (bus_id, company_id, bus_name, bus_model, bus_type, total_seats, status = 'Active') =>
@@ -123,7 +120,6 @@ export function createSeedData() {
     trip(12, 10, 10, at(3, 15), 2300),
     trip(13, 11, 11, at(4, 7), 2200),
     trip(14, 5, 5, at(5, 17), 6200),
-    // Past trips (used for reviews and booking history)
     trip(15, 1, 1, at(-3, 8), 2800, 'Completed'),
     trip(16, 3, 2, at(-6, 18), 7000, 'Completed'),
     trip(17, 12, 12, at(-4, 10), 3000, 'Completed'),
@@ -165,7 +161,9 @@ export function createSeedData() {
     booking(9, 5, 2, [2], 'Card'),
     booking(10, 1, 6, [6], 'Easypaisa'),
     booking(11, 4, 17, [3], 'Card'),
-    booking(12, 5, 18, [2], 'JazzCash')
+    booking(12, 5, 18, [2], 'JazzCash'),
+    // finished trip not rated yet
+    booking(13, 1, 18, [12], 'Card')
   ]
 
   const feedback = [

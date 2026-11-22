@@ -1,15 +1,7 @@
--- =============================================
--- Musafir - Views and Sample Queries
--- For Dashboard Analytics and Reports
--- =============================================
-
 USE TravelBookingDB;
 GO
 
--- =============================================
--- VIEW 1: BookingSummaryView
--- Summary per booking with user, trip, route, and total amount
--- =============================================
+-- Booking summary view
 CREATE OR ALTER VIEW BookingSummaryView AS
 SELECT 
     b.booking_id,
@@ -45,10 +37,7 @@ GROUP BY
     b.status, b.booking_datetime;
 GO
 
--- =============================================
--- VIEW 2: TripOccupancyView
--- Each trip with total seats, booked seats, and occupancy percentage
--- =============================================
+-- Trip occupancy view
 CREATE OR ALTER VIEW TripOccupancyView AS
 SELECT 
     t.trip_id,
@@ -84,10 +73,7 @@ GROUP BY
     t.fare_pkr, t.status, bus.total_seats;
 GO
 
--- =============================================
--- VIEW 3: RevenueByRouteView
--- Route-wise revenue in PKR
--- =============================================
+-- Revenue by route view
 CREATE OR ALTER VIEW RevenueByRouteView AS
 SELECT 
     r.route_id,
@@ -108,10 +94,7 @@ LEFT JOIN BookingDetails bd ON b.booking_id = bd.booking_id
 GROUP BY r.route_id, c1.city_name, c2.city_name;
 GO
 
--- =============================================
--- VIEW 4: CompanyRatingView
--- Average rating per bus company
--- =============================================
+-- Company rating view
 CREATE OR ALTER VIEW CompanyRatingView AS
 SELECT 
     bc.company_id,
@@ -127,13 +110,7 @@ LEFT JOIN Feedback f ON t.trip_id = f.trip_id
 GROUP BY bc.company_id, bc.company_name;
 GO
 
--- =============================================
--- ANALYTICAL QUERIES FOR DASHBOARDS
--- =============================================
-
--- =============================================
--- QUERY 1: Top 5 Routes by Number of Bookings
--- =============================================
+-- Top 5 routes by bookings
 SELECT TOP 5
     c1.city_name + N' → ' + c2.city_name AS route_name,
     COUNT(DISTINCT b.booking_id) AS total_bookings,
@@ -148,9 +125,7 @@ GROUP BY c1.city_name, c2.city_name
 ORDER BY total_bookings DESC;
 GO
 
--- =============================================
--- QUERY 2: Top 5 Bus Companies by Average Rating
--- =============================================
+-- Top 5 companies by rating
 SELECT TOP 5
     bc.company_name,
     crv.average_rating,
@@ -167,9 +142,7 @@ GROUP BY bc.company_name, crv.average_rating, crv.total_ratings
 ORDER BY crv.average_rating DESC, crv.total_ratings DESC;
 GO
 
--- =============================================
--- QUERY 3: Top 5 Bus Companies by Revenue
--- =============================================
+-- Top 5 companies by revenue
 SELECT TOP 5
     bc.company_name,
     COUNT(DISTINCT b.booking_id) AS total_bookings,
@@ -184,10 +157,7 @@ GROUP BY bc.company_name
 ORDER BY total_revenue_pkr DESC;
 GO
 
--- =============================================
--- QUERY 4: Upcoming Trips for a Given User
--- =============================================
--- Example: Get upcoming trips for user_id = 5
+-- Upcoming trips for a user
 SELECT 
     b.booking_id,
     c1.city_name + N' → ' + c2.city_name AS route_name,
@@ -206,7 +176,7 @@ INNER JOIN Cities c2 ON r.to_city_id = c2.city_id
 INNER JOIN Buses bus ON t.bus_id = bus.bus_id
 INNER JOIN BusCompanies bc ON bus.company_id = bc.company_id
 LEFT JOIN BookingDetails bd ON b.booking_id = bd.booking_id
-WHERE u.user_id = 5 -- Replace with parameter
+WHERE u.user_id = 5
     AND t.departure_datetime > GETDATE()
     AND b.status IN ('Confirmed', 'Pending')
 GROUP BY 
@@ -216,10 +186,7 @@ GROUP BY
 ORDER BY t.departure_datetime ASC;
 GO
 
--- =============================================
--- QUERY 5: Revenue per Route and per Operator for Date Range
--- =============================================
--- Example: revenue for the last 30 days
+-- Revenue per route/company, last 30 days
 SELECT 
     bc.company_name,
     c1.city_name + N' → ' + c2.city_name AS route_name,
@@ -239,9 +206,7 @@ GROUP BY bc.company_name, c1.city_name, c2.city_name
 ORDER BY net_revenue_pkr DESC;
 GO
 
--- =============================================
--- QUERY 6: Monthly Revenue Trend
--- =============================================
+-- Monthly revenue
 SELECT 
     YEAR(b.booking_datetime) AS booking_year,
     MONTH(b.booking_datetime) AS booking_month,
@@ -253,10 +218,7 @@ GROUP BY YEAR(b.booking_datetime), MONTH(b.booking_datetime)
 ORDER BY booking_year DESC, booking_month DESC;
 GO
 
--- =============================================
--- QUERY 7: Trip Occupancy Details for a Company
--- =============================================
--- Example: Get occupancy for company_id = 1 (Daewoo Express)
+-- Occupancy for one company
 SELECT 
     t.trip_id,
     c1.city_name + N' → ' + c2.city_name AS route_name,
@@ -274,7 +236,7 @@ INNER JOIN Buses bus ON t.bus_id = bus.bus_id
 INNER JOIN BusCompanies bc ON bus.company_id = bc.company_id
 LEFT JOIN Bookings b ON t.trip_id = b.trip_id AND b.status = 'Confirmed'
 LEFT JOIN BookingDetails bd ON b.booking_id = bd.booking_id
-WHERE bc.company_id = 1 -- Replace with parameter
+WHERE bc.company_id = 1
     AND t.departure_datetime > GETDATE()
 GROUP BY 
     t.trip_id, c1.city_name, c2.city_name, t.departure_datetime,
@@ -282,9 +244,7 @@ GROUP BY
 ORDER BY t.departure_datetime ASC;
 GO
 
--- =============================================
--- QUERY 8: User Booking History with Trip Details
--- =============================================
+-- Booking history for a user
 SELECT 
     b.booking_id,
     b.booking_datetime,
@@ -304,7 +264,7 @@ INNER JOIN Cities c2 ON r.to_city_id = c2.city_id
 INNER JOIN Buses bus ON t.bus_id = bus.bus_id
 INNER JOIN BusCompanies bc ON bus.company_id = bc.company_id
 LEFT JOIN BookingDetails bd ON b.booking_id = bd.booking_id
-WHERE b.user_id = 5 -- Replace with parameter
+WHERE b.user_id = 5
 GROUP BY 
     b.booking_id, b.booking_datetime, c1.city_name, c2.city_name,
     bc.company_name, t.departure_datetime, t.arrival_datetime,
@@ -312,9 +272,7 @@ GROUP BY
 ORDER BY b.booking_datetime DESC;
 GO
 
--- =============================================
--- QUERY 9: Promo Code Usage Statistics
--- =============================================
+-- Promo code usage
 SELECT 
     pc.code,
     pc.description,
@@ -333,9 +291,7 @@ GROUP BY
 ORDER BY times_used DESC;
 GO
 
--- =============================================
--- QUERY 10: Most Popular Routes by Passenger Count
--- =============================================
+-- Top 10 routes by passengers
 SELECT TOP 10
     c1.city_name + N' → ' + c2.city_name AS route_name,
     COUNT(DISTINCT b.booking_id) AS total_bookings,
@@ -354,4 +310,3 @@ GO
 
 PRINT 'Views and queries created successfully!';
 GO
-

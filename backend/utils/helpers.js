@@ -2,14 +2,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sql } = require('../config/db');
 
-// Hash a password with bcrypt
 const hashPassword = async (password) => {
     if (!password) return null;
     const salt = await bcrypt.genSalt(10);
     return bcrypt.hash(password, salt);
 };
 
-// Check a password against a bcrypt hash
 const comparePassword = async (password, hash) => {
     if (!password || !hash) return false;
     try {
@@ -19,7 +17,6 @@ const comparePassword = async (password, hash) => {
     }
 };
 
-// Create a login token
 const generateToken = (userId, role) => {
     return jwt.sign(
         { userId, role },
@@ -28,8 +25,6 @@ const generateToken = (userId, role) => {
     );
 };
 
-// Turn a list like [1, "2", 3] into whole numbers.
-// Returns null if anything in the list is not a positive whole number.
 const toIdList = (list) => {
     if (!Array.isArray(list) || list.length === 0) return null;
     const ids = list.map(Number);
@@ -37,8 +32,7 @@ const toIdList = (list) => {
     return ids;
 };
 
-// Add @id0, @id1, ... inputs to a request and return "@id0, @id1, ..."
-// so a list can be used in an IN (...) clause safely.
+// builds @id0, @id1... for a safe IN (...)
 const addIdInputs = (request, ids, prefix = 'id') => {
     return ids.map((id, i) => {
         request.input(`${prefix}${i}`, sql.Int, id);
@@ -46,15 +40,12 @@ const addIdInputs = (request, ids, prefix = 'id') => {
     }).join(', ');
 };
 
-// Gender rule: a seat cannot be booked next to a seat already taken by a
-// passenger of the opposite gender on the same trip.
-// "db" can be the connection pool or an open transaction.
+// gender rule: no seat next to opposite gender on same trip
 const validateGenderSeatRules = async (db, tripId, seatIds, passengerGenders) => {
     const request = db.request();
     request.input('tripId', sql.Int, tripId);
     const seatList = addIdInputs(request, seatIds, 'seat');
 
-    // Booked seats on this trip that sit next to one of the chosen seats
     const result = await request.query(`
         SELECT sa.seat_id AS chosen_seat_id, sa.adjacent_seat_id, s.seat_number, bd.passenger_gender
         FROM (
@@ -81,11 +72,21 @@ const validateGenderSeatRules = async (db, tripId, seatIds, passengerGenders) =>
         }
     }
 
-    // Seats chosen together in one booking (e.g. a family) are allowed together
+    // seats in the same booking (family) are fine together
     return { valid: true };
 };
 
+const checkPassword = (password) => {
+    const value = String(password || '');
+    if (value.length < 8) return 'Password must be at least 8 characters';
+    if (value.length > 64) return 'Password must be 64 characters or fewer';
+    if (!/[A-Za-z]/.test(value)) return 'Password must contain at least one letter';
+    if (!/[0-9]/.test(value)) return 'Password must contain at least one number';
+    return null;
+};
+
 module.exports = {
+    checkPassword,
     hashPassword,
     comparePassword,
     generateToken,

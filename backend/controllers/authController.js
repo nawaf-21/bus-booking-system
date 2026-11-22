@@ -1,11 +1,10 @@
 const { getPool, sql } = require('../config/db');
-const { hashPassword, comparePassword, generateToken } = require('../utils/helpers');
+const { hashPassword, comparePassword, generateToken, checkPassword } = require('../utils/helpers');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^(\+92|0)3\d{2}-?\d{7}$/;
 
-// Public sign up. Only passengers can sign up themselves.
-// Admin and bus company accounts are created by the admin (Admin > Users).
+// only passengers sign up here, admin makes other accounts
 const register = async (req, res) => {
     try {
         const { full_name, email, password, gender, phone_no, role } = req.body;
@@ -18,7 +17,7 @@ const register = async (req, res) => {
             return res.status(400).json({ error: 'Please enter your full name' });
         }
 
-        // Pakistani mobile number, for example 0300-1234567 or +923001234567
+        // pakistani number e.g. 0300-1234567
         if (!PHONE_PATTERN.test(String(phone_no).trim())) {
             return res.status(400).json({ error: 'Please enter a valid mobile number, for example 0300-1234567' });
         }
@@ -36,8 +35,9 @@ const register = async (req, res) => {
             return res.status(400).json({ error: 'Please enter a valid email address' });
         }
 
-        if (String(password).length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        const passwordProblem = checkPassword(password);
+        if (passwordProblem) {
+            return res.status(400).json({ error: passwordProblem });
         }
 
         const pool = await getPool();
@@ -105,7 +105,7 @@ const login = async (req, res) => {
         const user = result.recordset[0];
         const isValidPassword = user ? await comparePassword(String(password), user.password_hash) : false;
 
-        // Same message for "no such email" and "wrong password"
+        // same msg for wrong email and wrong password
         if (!isValidPassword) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
@@ -151,8 +151,6 @@ const getMe = async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Same shape as the login response, so the website gets the same
-        // fields after a page refresh
         const user = result.recordset[0];
         res.json({
             user: {

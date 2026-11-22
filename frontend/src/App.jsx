@@ -4,11 +4,9 @@ import PrivateRoute from './components/PrivateRoute'
 import Navbar from './components/Navbar'
 import Chatbot from './components/Chatbot'
 
-// Auth pages
 import Login from './pages/Login'
 import Register from './pages/Register'
 
-// Passenger pages
 import Home from './pages/passenger/Home'
 import TripResults from './pages/passenger/TripResults'
 import SeatSelection from './pages/passenger/SeatSelection'
@@ -17,7 +15,6 @@ import BookingConfirmation from './pages/passenger/BookingConfirmation'
 import MyBookings from './pages/passenger/MyBookings'
 import Favourites from './pages/passenger/Favourites'
 
-// Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminCompanies from './pages/admin/AdminCompanies'
 import AdminTrips from './pages/admin/AdminTrips'
@@ -26,7 +23,6 @@ import AdminBookings from './pages/admin/AdminBookings'
 import AdminOverrides from './pages/admin/AdminOverrides'
 import AdminPromoCodes from './pages/admin/AdminPromoCodes'
 
-// Bus Company pages
 import CompanyDashboard from './pages/company/CompanyDashboard'
 import CompanyTrips from './pages/company/CompanyTrips'
 import CompanyBuses from './pages/company/CompanyBuses'
@@ -43,7 +39,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Passenger routes */}
           <Route path="/" element={<Home />} />
           <Route path="/trips/search" element={<TripResults />} />
           <Route path="/trips/:id/seats" element={<SeatSelection />} />
@@ -52,7 +47,6 @@ function App() {
           <Route path="/my-bookings" element={<PrivateRoute role="Passenger"><MyBookings /></PrivateRoute>} />
           <Route path="/favourites" element={<PrivateRoute role="Passenger"><Favourites /></PrivateRoute>} />
 
-          {/* Admin routes */}
           <Route path="/admin" element={<PrivateRoute role="Admin"><AdminDashboard /></PrivateRoute>} />
           <Route path="/admin/users" element={<PrivateRoute role="Admin"><AdminUsers /></PrivateRoute>} />
           <Route path="/admin/companies" element={<PrivateRoute role="Admin"><AdminCompanies /></PrivateRoute>} />
@@ -61,7 +55,6 @@ function App() {
           <Route path="/admin/overrides" element={<PrivateRoute role="Admin"><AdminOverrides /></PrivateRoute>} />
           <Route path="/admin/promocodes" element={<PrivateRoute role="Admin"><AdminPromoCodes /></PrivateRoute>} />
 
-          {/* Bus Company routes */}
           <Route path="/company" element={<PrivateRoute role="BusCompany"><CompanyDashboard /></PrivateRoute>} />
           <Route path="/company/routes" element={<PrivateRoute role="BusCompany"><CompanyRoutes /></PrivateRoute>} />
           <Route path="/company/buses" element={<PrivateRoute role="BusCompany"><CompanyBuses /></PrivateRoute>} />
@@ -69,7 +62,6 @@ function App() {
           <Route path="/company/trips/manage" element={<PrivateRoute role="BusCompany"><CompanyTripManagement /></PrivateRoute>} />
           <Route path="/company/feedback" element={<PrivateRoute role="BusCompany"><CompanyFeedback /></PrivateRoute>} />
 
-          {/* Unknown URLs go back to the home page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Chatbot />

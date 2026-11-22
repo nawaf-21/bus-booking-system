@@ -2,10 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import api, { isBackendUnavailable } from '../utils/api';
 import '../styles/Chatbot.css';
 
-// The chatbot never talks to an AI provider directly. It sends messages to the
-// backend endpoint POST /api/chatbot/chat, and the backend holds the private
-// AI API key in its own environment. No key may ever be placed in this file
-// or in a VITE_* variable.
+// only talks to our backend, the AI key stays on the server
 
 const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -20,7 +17,7 @@ const Chatbot = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // null = not checked yet, false = backend could not be reached
+  // null = not checked yet, false = backend unreachable
   const [isAvailable, setIsAvailable] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -47,7 +44,6 @@ const Chatbot = () => {
     const userMessage = inputMessage.trim();
     setInputMessage('');
     
-    // Add user message
     const newUserMessage = {
       role: 'user',
       content: userMessage,
@@ -57,7 +53,6 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
-      // Build conversation history (last 10 messages for context)
       const conversationHistory = messages
         .slice(-10)
         .map(msg => ({
@@ -95,7 +90,6 @@ const Chatbot = () => {
 
   return (
     <>
-      {/* Chat Bubble Button */}
       <button
         className={`chatbot-toggle ${isOpen ? 'open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
@@ -113,7 +107,6 @@ const Chatbot = () => {
         )}
       </button>
 
-      {/* Chat Window */}
       {isOpen && (
         <div className="chatbot-window">
           <div className="chatbot-header">

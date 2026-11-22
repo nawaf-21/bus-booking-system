@@ -6,12 +6,10 @@ const Checkout = () => {
   const [bookingData, setBookingData] = useState(null)
   const [preview, setPreview] = useState(null)
   const [promoCode, setPromoCode] = useState('')
-  // The promo code that was checked and is included in the price shown
+  // only this one is sent, it was already checked
   const [appliedPromo, setAppliedPromo] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  // Message under the promo box: { type: 'error' | 'success', text }
   const [promoMessage, setPromoMessage] = useState(null)
-  // Error shown above the Confirm button if the booking fails
   const [confirmError, setConfirmError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('Card')
   const [loading, setLoading] = useState(true)
@@ -27,7 +25,6 @@ const Checkout = () => {
     const parsed = JSON.parse(data)
     setBookingData(parsed)
     
-    // Get preview
     api.post('/bookings/preview', {
       trip_id: parsed.trip_id,
       seat_ids: parsed.seats.map(s => s.seat_id),
@@ -54,7 +51,6 @@ const Checkout = () => {
       return
     }
     try {
-      // The preview checks the code for this trip and works out the discount
       const newPreview = await getPreview(code)
       setPreview(newPreview.data)
       setAppliedPromo(code)
@@ -149,7 +145,7 @@ const Checkout = () => {
             value={promoCode}
             onChange={(e) => {
               setPromoCode(e.target.value)
-              setPromoMessage(null) // hide the old message while typing
+              setPromoMessage(null)
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handlePromoCode()

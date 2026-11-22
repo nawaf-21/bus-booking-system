@@ -9,11 +9,9 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedBooking, setSelectedBooking] = useState(null)
-  // The booking the passenger is writing a review for
   const [reviewBooking, setReviewBooking] = useState(null)
   const [rating, setRating] = useState(5)
   const [comments, setComments] = useState('')
-  // Which tab is open: 'upcoming', 'past' or 'cancelled'
   const [tab, setTab] = useState('upcoming')
 
   useEffect(() => {
@@ -27,7 +25,7 @@ const MyBookings = () => {
     if (!confirm('Are you sure you want to cancel this booking?')) return
     try {
       await api.post(`/bookings/${bookingId}/cancel`)
-      // Keep it in the list, but show it as cancelled and refunded
+      // keep it but show as cancelled
       setBookings(prev => prev.map(b => b.booking_id === bookingId
         ? { ...b, booking_status: 'Cancelled', payment_status: 'Refunded' }
         : b))
@@ -51,7 +49,6 @@ const MyBookings = () => {
     }
   }
 
-  // Badge colours for each booking status
   const statusColor = (status) => {
     if (status === 'Confirmed') return { background: 'var(--success-soft)', color: 'var(--success)' }
     if (status === 'Pending') return { background: 'var(--accent-soft)', color: 'var(--primary)' }
@@ -66,17 +63,15 @@ const MyBookings = () => {
     return <div className="loading">Loading...</div>
   }
 
-  // Put each booking in a tab:
-  // upcoming = active and the bus has not left, past = active and the bus has left,
-  // cancelled = cancelled or refunded
   const now = new Date()
   const isActive = (b) => b.booking_status === 'Confirmed' || b.booking_status === 'Pending'
+  const hasTravelled = (b) => new Date(b.departure_datetime) <= now || b.trip_status === 'Completed'
   const upcoming = bookings
-    .filter(b => isActive(b) && new Date(b.departure_datetime) > now)
-    .sort((a, b) => new Date(a.departure_datetime) - new Date(b.departure_datetime)) // soonest first
+    .filter(b => isActive(b) && !hasTravelled(b))
+    .sort((a, b) => new Date(a.departure_datetime) - new Date(b.departure_datetime))
   const past = bookings
-    .filter(b => isActive(b) && new Date(b.departure_datetime) <= now)
-    .sort((a, b) => new Date(b.departure_datetime) - new Date(a.departure_datetime)) // latest first
+    .filter(b => isActive(b) && hasTravelled(b))
+    .sort((a, b) => new Date(b.departure_datetime) - new Date(a.departure_datetime))
   const cancelled = bookings.filter(b => !isActive(b))
   const tabs = [
     { key: 'upcoming', label: 'Upcoming', list: upcoming, empty: 'No upcoming trips. Search for your next journey!' },
@@ -182,13 +177,12 @@ const MyBookings = () => {
                 >
                   View Invoice
                 </button>
-                {booking.booking_status === 'Confirmed' && new Date(booking.departure_datetime) > new Date() && (
+                {booking.booking_status === 'Confirmed' && !hasTravelled(booking) && (
                   <button className="btn btn-danger" onClick={() => handleCancel(booking.booking_id)}>
                     Cancel Booking
                   </button>
                 )}
-                {/* A trip can be reviewed once, after the bus has left */}
-                {booking.booking_status === 'Confirmed' && new Date(booking.departure_datetime) < new Date() && (
+                {booking.booking_status === 'Confirmed' && hasTravelled(booking) && (
                   booking.has_review ? (
                     <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Reviewed</span>
                   ) : (

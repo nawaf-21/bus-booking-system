@@ -23,7 +23,6 @@ const AdminBookings = () => {
     api.get('/routes').then(res => setRoutes(res.data.routes)).catch(() => {})
     api.get('/companies').then(res => setCompanies(res.data.companies)).catch(() => {})
     api.get('/users').then(res => setUsers(res.data.users)).catch(() => {})
-    // Load once on mount; later loads happen when the admin presses Search
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -36,7 +35,7 @@ const AdminBookings = () => {
     company_id: ''
   }
 
-  // The filters are passed in so Reset can search with the empty ones straight away
+  // filters passed in because state isn't updated yet on Reset
   const loadBookings = (currentFilters = filters) => {
     const params = new URLSearchParams()
     Object.keys(currentFilters).forEach(key => {
@@ -77,7 +76,6 @@ const AdminBookings = () => {
     <div className="container">
       <h1>Booking Management</h1>
 
-      {/* Filters */}
       <div className="card fade-in" style={{ marginBottom: '30px' }}>
         <h2 style={{ marginBottom: '20px' }}>Search & Filter</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
@@ -142,7 +140,6 @@ const AdminBookings = () => {
         </div>
       </div>
 
-      {/* Bookings Table */}
       <div className="card fade-in">
         {bookings.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -162,7 +159,6 @@ const AdminBookings = () => {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Invoice</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -204,14 +200,6 @@ const AdminBookings = () => {
                     ) : (
                       <span style={{ color: 'var(--text-muted)' }}>-</span>
                     )}
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => setSelectedBooking(booking)}
-                    >
-                      View
-                    </button>
                   </td>
                 </tr>
               ))}

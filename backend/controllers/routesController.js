@@ -1,10 +1,7 @@
 const { getPool, sql } = require('../config/db');
 
-// True when an optional number field was left empty
 const isBlank = (value) => value === undefined || value === null || value === '';
 
-// Distance and duration are optional, but if given they cannot be negative.
-// Returns an error message, or null when everything is fine.
 const checkDistanceAndDuration = (distance_km, approx_duration_min) => {
     if (!isBlank(distance_km) && !(Number(distance_km) >= 0)) {
         return 'Distance cannot be negative';
@@ -104,7 +101,7 @@ const createRoute = async (req, res) => {
         });
     } catch (error) {
         console.error('Create route error:', error);
-        // 2627 / 2601 = unique key broken (this from/to pair already exists)
+        // 2627/2601 = route already exists
         if (error.number === 2627 || error.number === 2601) {
             return res.status(400).json({ error: 'This route already exists' });
         }
@@ -159,7 +156,6 @@ const updateRoute = async (req, res) => {
 
 const getCompanyRoutes = async (req, res) => {
     try {
-        // Bus companies can see all routes (they use them for trips)
         const pool = await getPool();
         const result = await pool.request().query(`
             SELECT r.route_id, 

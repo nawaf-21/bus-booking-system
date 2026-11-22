@@ -5,7 +5,6 @@ const getOverview = async (req, res) => {
         const pool = await getPool();
         const companyId = req.user.companyId;
 
-        // Total bookings for this company
         const bookingsResult = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`
@@ -16,7 +15,6 @@ const getOverview = async (req, res) => {
                 WHERE bus.company_id = @companyId AND b.status = 'Confirmed'
             `);
 
-        // Total revenue
         const revenueResult = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`
@@ -27,7 +25,6 @@ const getOverview = async (req, res) => {
                 WHERE bus.company_id = @companyId AND b.status = 'Confirmed'
             `);
 
-        // Upcoming trips count
         const upcomingTripsResult = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`
@@ -39,7 +36,6 @@ const getOverview = async (req, res) => {
                     AND t.departure_datetime > GETDATE()
             `);
 
-        // Average rating
         const ratingResult = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`
@@ -52,7 +48,6 @@ const getOverview = async (req, res) => {
                 WHERE bus.company_id = @companyId
             `);
 
-        // Upcoming trips with occupancy
         const upcomingTripsResult2 = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`
@@ -80,7 +75,6 @@ const getOverview = async (req, res) => {
                 ORDER BY t.departure_datetime ASC
             `);
 
-        // Recent feedback
         const feedbackResult = await pool.request()
             .input('companyId', sql.Int, companyId)
             .query(`

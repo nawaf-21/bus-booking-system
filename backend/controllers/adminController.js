@@ -4,28 +4,24 @@ const getOverview = async (req, res) => {
     try {
         const pool = await getPool();
 
-        // Total bookings
         const bookingsResult = await pool.request().query(`
             SELECT COUNT(*) AS total_bookings
             FROM Bookings
             WHERE status = 'Confirmed'
         `);
 
-        // Total revenue
         const revenueResult = await pool.request().query(`
             SELECT SUM(total_amount_pkr - discount_amount_pkr) AS total_revenue_pkr
             FROM Bookings
             WHERE status = 'Confirmed'
         `);
 
-        // Total users
         const usersResult = await pool.request().query(`
             SELECT COUNT(*) AS total_users
             FROM Users
             WHERE role = 'Passenger' AND is_active = 1
         `);
 
-        // Top 5 routes by bookings
         const topRoutesResult = await pool.request().query(`
             SELECT TOP 5
                 c1.city_name + N' → ' + c2.city_name AS route_name,
@@ -41,7 +37,6 @@ const getOverview = async (req, res) => {
             ORDER BY total_bookings DESC
         `);
 
-        // Top 5 companies by revenue
         const topCompaniesRevenueResult = await pool.request().query(`
             SELECT TOP 5
                 bc.company_name,
@@ -57,7 +52,6 @@ const getOverview = async (req, res) => {
             ORDER BY total_revenue_pkr DESC
         `);
 
-        // Top 5 companies by rating
         const topCompaniesRatingResult = await pool.request().query(`
             SELECT TOP 5
                 bc.company_name,
@@ -253,7 +247,6 @@ const forceCancelBooking = async (req, res) => {
             return res.status(400).json({ error: 'This booking is not active' });
         }
 
-        // Cancel the booking and refund its payment together
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -295,7 +288,6 @@ const processRefund = async (req, res) => {
         const { amount, reason } = req.body;
         const pool = await getPool();
 
-        // Get booking details
         const bookingResult = await pool.request()
             .input('bookingId', sql.Int, id)
             .query(`
@@ -333,7 +325,6 @@ const processRefund = async (req, res) => {
 
         const refundReason = reason || 'Admin refund';
 
-        // Mark the booking and its payment as refunded together
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -384,10 +375,9 @@ const reserveSeat = async (req, res) => {
 
         const pool = await getPool();
         transaction = new sql.Transaction(pool);
-        // SERIALIZABLE stops someone else booking the same seat at the same moment
+        // serializable so two people can't grab the same seat
         await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
-        // Only upcoming scheduled trips can have seats reserved
         const tripCheck = await transaction.request()
             .input('tripId', sql.Int, trip_id)
             .query(`
@@ -400,7 +390,6 @@ const reserveSeat = async (req, res) => {
             return res.status(400).json({ error: 'Seats can only be reserved on upcoming scheduled trips' });
         }
 
-        // The seat must be on the bus used for this trip
         const seatOnBus = await transaction.request()
             .input('tripId', sql.Int, trip_id)
             .input('seatId', sql.Int, seat_id)
@@ -416,7 +405,6 @@ const reserveSeat = async (req, res) => {
             return res.status(400).json({ error: 'This seat is not on the bus for this trip' });
         }
 
-        // Check if seat is already booked on this trip (same check as bookings)
         const seatCheck = await transaction.request()
             .input('tripId', sql.Int, trip_id)
             .input('seatId', sql.Int, seat_id)
@@ -432,7 +420,6 @@ const reserveSeat = async (req, res) => {
             return res.status(400).json({ error: 'Seat is already booked' });
         }
 
-        // Create a manual reservation booking (admin override)
         const bookingResult = await transaction.request()
             .input('tripId', sql.Int, trip_id)
             .input('adminId', sql.Int, req.user.userId)
@@ -444,7 +431,6 @@ const reserveSeat = async (req, res) => {
 
         const bookingId = bookingResult.recordset[0].booking_id;
 
-        // Create booking detail
         await transaction.request()
             .input('bookingId', sql.Int, bookingId)
             .input('seatId', sql.Int, seat_id)

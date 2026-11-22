@@ -64,16 +64,12 @@ const getBusById = async (req, res) => {
 const BUS_TYPES = ['AC', 'Non-AC', 'Sleeper', 'Seater'];
 const BUS_STATUSES = ['Active', 'Maintenance', 'Inactive'];
 
-// total_seats must be a whole number from 1 to 60
 const isValidSeatCount = (value) => {
     const n = Number(value);
     return Number.isInteger(n) && n >= 1 && n <= 60;
 };
 
-// Create the seats of a bus, same layout as the seed data in the schema:
-// 4 seats per row (A1 A2 | A3 A4), columns 1 and 4 are windows.
-// Then link the seats that sit side by side (1-2 and 3-4) for the gender rule.
-// "transaction" must be an open transaction.
+// 4 seats per row, cols 1 and 4 are windows
 const createSeatsForBus = async (transaction, busId, totalSeats) => {
     for (let i = 1; i <= totalSeats; i++) {
         const row = Math.floor((i - 1) / 4) + 1;
@@ -93,7 +89,6 @@ const createSeatsForBus = async (transaction, busId, totalSeats) => {
             `);
     }
 
-    // Same query as the seed: one row per pair, col 1 -> col 2 and col 3 -> col 4
     await transaction.request()
         .input('busId', sql.Int, busId)
         .query(`
@@ -122,7 +117,6 @@ const createBus = async (req, res) => {
             return res.status(400).json({ error: 'Total seats must be a whole number from 1 to 60' });
         }
 
-        // Check if user is BusCompany, verify company_id matches
         if (req.user.role === 'BusCompany' && req.user.companyId !== Number(company_id)) {
             return res.status(403).json({ error: 'You can only create buses for your own company' });
         }
@@ -178,7 +172,6 @@ const updateBus = async (req, res) => {
         }
         const bus = busResult.recordset[0];
 
-        // Check if user is BusCompany, verify bus belongs to their company
         if (req.user.role === 'BusCompany' && bus.company_id !== req.user.companyId) {
             return res.status(403).json({ error: 'You can only update buses for your own company' });
         }
@@ -190,7 +183,7 @@ const updateBus = async (req, res) => {
             return res.status(400).json({ error: 'Invalid bus status' });
         }
 
-        // Changing the seat count means the seats have to be made again
+        // seat count changed so seats get rebuilt
         const seatsChanged = total_seats !== undefined && total_seats !== ''
             && Number(total_seats) !== bus.total_seats;
 
@@ -208,7 +201,6 @@ const updateBus = async (req, res) => {
             }
         }
 
-        // Update the bus (and rebuild its seats if needed), all or nothing
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
@@ -244,7 +236,7 @@ const updateBus = async (req, res) => {
         await request.query(`UPDATE Buses SET ${updates.join(', ')} WHERE bus_id = @busId`);
 
         if (seatsChanged) {
-            // Adjacency rows point at the seats, so delete them first
+            // delete adjacency rows first (fk to seats)
             await transaction.request()
                 .input('busId', sql.Int, id)
                 .query(`
@@ -275,7 +267,6 @@ const deleteBus = async (req, res) => {
         const { id } = req.params;
         const pool = await getPool();
 
-        // Check if user is BusCompany, verify bus belongs to their company
         if (req.user.role === 'BusCompany') {
             const busCheck = await pool.request()
                 .input('busId', sql.Int, id)
@@ -287,7 +278,6 @@ const deleteBus = async (req, res) => {
             }
         }
 
-        // Soft delete
         await pool.request()
             .input('busId', sql.Int, id)
             .query("UPDATE Buses SET status = 'Inactive' WHERE bus_id = @busId");

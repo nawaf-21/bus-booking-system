@@ -137,7 +137,6 @@ const getTripSeats = async (req, res) => {
         const { id } = req.params;
         const pool = await getPool();
 
-        // Get trip and bus info
         const tripResult = await pool.request()
             .input('tripId', sql.Int, id)
             .query(`
@@ -153,7 +152,6 @@ const getTripSeats = async (req, res) => {
 
         const busId = tripResult.recordset[0].bus_id;
 
-        // Get all seats with booking status
         const seatsResult = await pool.request()
             .input('tripId', sql.Int, id)
             .input('busId', sql.Int, busId)
@@ -179,11 +177,29 @@ const getTripSeats = async (req, res) => {
                 ORDER BY s.seat_row, s.seat_column
             `);
 
+        // each pair stored once so add both directions
+        const adjacencyResult = await pool.request()
+            .input('busId', sql.Int, busId)
+            .query(`
+                SELECT sa.seat_id, sa.adjacent_seat_id
+                FROM SeatAdjacency sa
+                INNER JOIN Seats s ON s.seat_id = sa.seat_id
+                WHERE s.bus_id = @busId
+            `);
+        const neighbours = {};
+        for (const pair of adjacencyResult.recordset) {
+            (neighbours[pair.seat_id] = neighbours[pair.seat_id] || []).push(pair.adjacent_seat_id);
+            (neighbours[pair.adjacent_seat_id] = neighbours[pair.adjacent_seat_id] || []).push(pair.seat_id);
+        }
+
         res.json({
             tripId: id,
             busId: busId,
             totalSeats: tripResult.recordset[0].total_seats,
-            seats: seatsResult.recordset
+            seats: seatsResult.recordset.map(seat => ({
+                ...seat,
+                adjacent_seat_ids: neighbours[seat.seat_id] || []
+            }))
         });
     } catch (error) {
         console.error('Get trip seats error:', error);
@@ -191,8 +207,7 @@ const getTripSeats = async (req, res) => {
     }
 };
 
-// Returns true if this bus already has another Scheduled/InProgress trip
-// that overlaps the given times. excludeTripId is used when editing a trip.
+// true if bus has another overlapping trip
 const busHasOverlap = async (pool, busId, departure, arrival, excludeTripId) => {
     const result = await pool.request()
         .input('busId', sql.Int, busId)
@@ -237,7 +252,6 @@ const createTrip = async (req, res) => {
 
         const pool = await getPool();
 
-        // The bus must exist and be Active
         const busResult = await pool.request()
             .input('busId', sql.Int, bus_id)
             .query('SELECT bus_id, company_id, status FROM Buses WHERE bus_id = @busId');
@@ -247,7 +261,6 @@ const createTrip = async (req, res) => {
         }
         const bus = busResult.recordset[0];
 
-        // A bus company can only use its own buses
         if (req.user.role === 'BusCompany' && bus.company_id !== req.user.companyId) {
             return res.status(403).json({ error: 'You can only create trips for your own buses' });
         }
@@ -281,7 +294,7 @@ const createTrip = async (req, res) => {
     }
 };
 
-// Only the times, fare and status can be edited. Bus and route stay the same.
+// only times, fare and status can be edited
 const updateTrip = async (req, res) => {
     try {
         const { id } = req.params;
@@ -289,7 +302,6 @@ const updateTrip = async (req, res) => {
 
         const pool = await getPool();
 
-        // Load the trip with its bus so we can check ownership and the current times
         const tripResult = await pool.request()
             .input('tripId', sql.Int, id)
             .query(`
@@ -315,7 +327,6 @@ const updateTrip = async (req, res) => {
         const updates = [];
         const request = pool.request().input('tripId', sql.Int, id);
 
-        // Work out the new times (keep the old ones if not sent)
         const departure = departure_datetime ? new Date(departure_datetime) : new Date(trip.departure_datetime);
         const arrival = arrival_datetime ? new Date(arrival_datetime) : new Date(trip.arrival_datetime);
 
@@ -351,7 +362,7 @@ const updateTrip = async (req, res) => {
             request.input('fare_pkr', sql.Decimal(10,2), fare_pkr);
         }
         if (status) {
-            // Cancelling goes through DELETE /trips/:id so bookings get cancelled too
+            // cancel goes through DELETE so bookings get cancelled too
             if (!['Scheduled', 'InProgress', 'Completed'].includes(status)) {
                 return res.status(400).json({ error: 'Invalid trip status' });
             }
@@ -373,7 +384,6 @@ const updateTrip = async (req, res) => {
     }
 };
 
-// Cancel a trip, cancel its confirmed bookings and refund their payments
 const deleteTrip = async (req, res) => {
     let transaction;
     try {
@@ -404,7 +414,7 @@ const deleteTrip = async (req, res) => {
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 
-        // Refund payments first, while we can still find the Confirmed bookings
+        // refund first while bookings are still Confirmed
         await transaction.request()
             .input('tripId', sql.Int, id)
             .query(`

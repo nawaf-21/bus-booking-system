@@ -4,20 +4,19 @@ import Modal from '../../components/Modal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Alert from '../../components/Alert'
 
-// Format a date for an <input type="datetime-local"> in the user's own time zone
+// local time for datetime-local input
 const toLocalInput = (value) => {
   const d = new Date(value)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Arrival = departure + the route's usual journey time (empty if either is missing)
 const arrivalFor = (departure, route) => {
   if (!departure || !route || !route.approx_duration_min) return ''
   return toLocalInput(new Date(departure).getTime() + route.approx_duration_min * 60000)
 }
 
-// 270 minutes -> "4h 30m"
+// 270 -> "4h 30m"
 const formatDuration = (minutes) => {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -60,8 +59,7 @@ const CompanyTripManagement = () => {
       })
   }
 
-  // Keep all buses so the edit form can still show a bus that is no longer Active.
-  // The add form only lists Active buses.
+  // keep inactive buses too so edit can still show them
   const loadBuses = () => {
     api.get('/company/buses')
       .then(res => setBuses(res.data.buses))
@@ -87,11 +85,9 @@ const CompanyTripManagement = () => {
 
   const handleEdit = (trip) => {
     setSelectedTrip(trip)
-    // Extract route_id from route_name if needed, or get full trip details
     api.get(`/trips/${trip.trip_id}`)
       .then(res => {
         const tripData = res.data.trip || trip
-        // Try to find route_id from routes list if not in trip data
         let routeId = tripData.route_id
         if (!routeId && trip.route_name) {
           const route = routes.find(r => trip.route_name.includes(r.from_city) && trip.route_name.includes(r.to_city))
@@ -110,7 +106,6 @@ const CompanyTripManagement = () => {
         setShowEditModal(true)
       })
       .catch(() => {
-        // Fallback: use trip data directly
         const route = routes.find(r => trip.route_name && trip.route_name.includes(r.from_city))
         setFormData({
           bus_id: trip.bus_id || '',
@@ -139,7 +134,7 @@ const CompanyTripManagement = () => {
         })
         showAlert('Trip created successfully!', 'success')
       } else {
-        // Route and bus cannot be changed on an existing trip
+        // route and bus can't change on edit
         await api.put(`/trips/${selectedTrip.trip_id}`, {
           fare_pkr: formData.fare_pkr,
           departure_datetime: new Date(formData.departure_datetime).toISOString(),
@@ -173,15 +168,32 @@ const CompanyTripManagement = () => {
     })
   }
 
+  // passengers can rate completed trips
+  const handleComplete = (trip) => {
+    setConfirmDialog({
+      isOpen: true,
+      type: 'info',
+      title: 'Mark Trip Completed',
+      message: `Mark ${trip.route_name} on ${new Date(trip.departure_datetime).toLocaleString()} as completed? Its passengers can then rate the trip, and it can no longer be edited or cancelled.`,
+      onConfirm: async () => {
+        try {
+          await api.put(`/trips/${trip.trip_id}`, { status: 'Completed' })
+          showAlert('Trip marked as completed', 'success')
+          loadTrips()
+        } catch (err) {
+          showAlert(err.response?.data?.error || 'Failed to update trip', 'error')
+        }
+      }
+    })
+  }
+
   if (loading) {
     return <div className="loading">Loading...</div>
   }
 
-  // The route chosen in the form (its base fare is a suggestion for this trip's fare)
   const selectedRoute = routes.find(r => String(r.route_id) === String(formData.route_id))
 
-  // When a new route is picked, fill the fare with that route's base fare,
-  // unless the company has already typed its own fare
+  // use the route base fare unless they typed their own
   const handleRouteChange = (routeId) => {
     const oldRoute = routes.find(r => String(r.route_id) === String(formData.route_id))
     const newRoute = routes.find(r => String(r.route_id) === String(routeId))
@@ -194,13 +206,11 @@ const CompanyTripManagement = () => {
     })
   }
 
-  // The arrival time counts as "not typed by the company" if it is empty or
-  // still the value we filled in, so it may be filled in again
+  // empty or still our auto value = can be refilled
   const arrivalUntouched = () =>
     formData.arrival_datetime === '' ||
     formData.arrival_datetime === arrivalFor(formData.departure_datetime, selectedRoute)
 
-  // When the departure changes, move the arrival with it
   const handleDepartureChange = (departure) => {
     setFormData({
       ...formData,
@@ -248,10 +258,10 @@ const CompanyTripManagement = () => {
                   <td>{trip.trip_status}</td>
                   <td>{trip.booked_seats || 0} / {trip.total_seats || 0}</td>
                   <td>
-                    {/* Only scheduled trips can be edited or cancelled */}
                     {trip.trip_status === 'Scheduled' ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button className="btn btn-sm" onClick={() => handleEdit(trip)}>Edit</button>
+                        <button className="btn btn-sm btn-success" onClick={() => handleComplete(trip)}>Complete</button>
                         <button className="btn btn-sm btn-danger" onClick={() => handleDelete(trip.trip_id)}>
                           Cancel
                         </button>
@@ -265,7 +275,6 @@ const CompanyTripManagement = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         isOpen={showAddModal || showEditModal}
         onClose={() => {
@@ -301,7 +310,6 @@ const CompanyTripManagement = () => {
                   required
                 >
                   <option value="">Select Bus</option>
-                  {/* New trips can only use Active buses; when editing show the trip's own bus */}
                   {buses
                     .filter(bus => showEditModal ? String(bus.bus_id) === String(formData.bus_id) : bus.status === 'Active')
                     .map(bus => (
@@ -368,7 +376,6 @@ const CompanyTripManagement = () => {
             </form>
       </Modal>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
@@ -378,7 +385,6 @@ const CompanyTripManagement = () => {
         type={confirmDialog.type}
       />
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}

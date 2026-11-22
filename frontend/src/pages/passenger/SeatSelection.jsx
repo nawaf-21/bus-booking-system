@@ -15,7 +15,7 @@ const SeatSelection = () => {
   useEffect(() => {
     api.get(`/trips/${id}`)
       .then(res => setTrip(res.data.trip))
-      .catch(() => {}) // the seat request below reports the error
+      .catch(() => {}) // seat request reports the error
     api.get(`/trips/${id}/seats`)
       .then(res => setSeats(res.data.seats))
       .catch(err => setError(getErrorMessage(err, 'Could not load the seat map for this trip.')))
@@ -44,6 +44,18 @@ const SeatSelection = () => {
     }
   }
 
+  // gender rule checked early, server checks again
+  const genderConflict = (seat, gender) => {
+    for (const id of seat.adjacent_seat_ids || []) {
+      const neighbour = seats.find(s => s.seat_id === id)
+      if (neighbour && neighbour.seat_status === 'Booked' &&
+          neighbour.booked_gender && neighbour.booked_gender !== 'Neutral' && neighbour.booked_gender !== gender) {
+        return `Seat ${seat.seat_number} is next to seat ${neighbour.seat_number}, which is booked by a ${neighbour.booked_gender.toLowerCase()} passenger.`
+      }
+    }
+    return null
+  }
+
   const handlePassengerDataChange = (seatId, field, value) => {
     setPassengerData({
       ...passengerData,
@@ -52,7 +64,6 @@ const SeatSelection = () => {
   }
 
   const handleContinue = () => {
-    // Validate all selected seats have passenger data
     const allValid = selectedSeats.every(seat => {
       const data = passengerData[seat.seat_id]
       return data && data.name.trim() && data.gender
@@ -63,7 +74,6 @@ const SeatSelection = () => {
       return
     }
 
-    // Store in sessionStorage and navigate to checkout
     sessionStorage.setItem('bookingData', JSON.stringify({
       trip_id: id,
       seats: selectedSeats.map(seat => ({
@@ -83,7 +93,6 @@ const SeatSelection = () => {
     return <div className="loading">Loading seat map...</div>
   }
 
-  // A trip that has left or was cancelled can't be booked
   const bookable = !trip || (trip.trip_status === 'Scheduled' && new Date(trip.departure_datetime) > new Date())
   if (!bookable) {
     return (
@@ -94,7 +103,6 @@ const SeatSelection = () => {
     )
   }
 
-  // Group seats by row
   const seatsByRow = {}
   seats.forEach(seat => {
     if (!seatsByRow[seat.seat_row]) {
@@ -105,7 +113,6 @@ const SeatSelection = () => {
 
   return (
     <div className="container">
-      {/* Back to the trip list (the previous page in the browser history) */}
       <button className="pill" onClick={() => navigate(-1)} style={{ marginBottom: '12px' }}>
         ← Back to trips
       </button>
@@ -169,8 +176,7 @@ const SeatSelection = () => {
                 let seatClass = 'seat available'
                 let title = seat.seat_number
                 if (seat.seat_status === 'Booked') {
-                  // Booked seats show who is sitting there: pink for a woman, blue for a man.
-                  // Seats held by the admin (Neutral) stay grey.
+                  // booked: pink = female, blue = male, admin held stays grey
                   if (seat.booked_gender === 'Female') seatClass = 'seat booked booked-female'
                   else if (seat.booked_gender === 'Male') seatClass = 'seat booked booked-male'
                   else seatClass = 'seat booked'
@@ -180,7 +186,7 @@ const SeatSelection = () => {
                 }
                 return (
                   <Fragment key={seat.seat_id}>
-                    {/* The aisle: 2 seats on the left, 2 on the right */}
+                    {/* aisle after 2 seats */}
                     {index === 2 && <span className="seat-aisle"></span>}
                     <button
                       onClick={() => toggleSeat(seat)}
@@ -232,9 +238,14 @@ const SeatSelection = () => {
                     required
                   >
                     <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Male" disabled={Boolean(genderConflict(seat, 'Male'))}>Male</option>
+                    <option value="Female" disabled={Boolean(genderConflict(seat, 'Female'))}>Female</option>
                   </select>
+                  {(genderConflict(seat, 'Male') || genderConflict(seat, 'Female')) && (
+                    <small style={{ color: 'var(--text-secondary)' }}>
+                      {genderConflict(seat, 'Male') || genderConflict(seat, 'Female')}
+                    </small>
+                  )}
                 </div>
               </div>
             </div>

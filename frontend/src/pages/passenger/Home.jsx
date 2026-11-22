@@ -8,8 +8,7 @@ const Home = () => {
   const [companies, setCompanies] = useState([])
   const [favouriteRoutes, setFavouriteRoutes] = useState([])
   const [loadError, setLoadError] = useState('')
-  // Coming back from the results page ("Change search") puts the old search
-  // in the URL, so the form starts filled in
+  // prefill from the URL when coming back from results
   const [searchParams] = useSearchParams()
   const [searchData, setSearchData] = useState({
     from_city_id: searchParams.get('from_city_id') || '',
@@ -44,12 +43,11 @@ const Home = () => {
     navigate(`/trips/search?${params.toString()}`)
   }
 
-  // Swap From and To (for a return trip)
   const handleSwap = () => {
     setSearchData({ ...searchData, from_city_id: searchData.to_city_id, to_city_id: searchData.from_city_id })
   }
 
-  // Dates as YYYY-MM-DD in local time (what a date input needs)
+  // en-CA gives YYYY-MM-DD in local time
   const today = new Date().toLocaleDateString('en-CA')
   const tomorrowDate = new Date()
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
@@ -89,7 +87,7 @@ const Home = () => {
                 value={searchData.from_city_id}
                 onChange={(e) => {
                   const from = e.target.value;
-                  // From and To can't be the same city, so clear To if it matches
+                  // From and To can't be the same
                   const to = searchData.to_city_id === from ? '' : searchData.to_city_id;
                   setSearchData({ ...searchData, from_city_id: from, to_city_id: to });
                 }}

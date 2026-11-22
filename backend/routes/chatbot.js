@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const chatbotController = require('../controllers/chatbotController');
 
-// Simple limit so nobody can use up the AI key: 20 messages per 10 minutes per address
+// rate limit so nobody burns the ai key
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_MESSAGES = 20;
 const recent = new Map();

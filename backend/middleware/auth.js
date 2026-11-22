@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getPool, sql } = require('../config/db');
 
-// Check the login token and load the user from the database
 const authenticate = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1]; // "Bearer <token>"
     if (!token) {
@@ -25,7 +24,7 @@ const authenticate = async (req, res, next) => {
             return res.status(401).json({ error: 'Your session has expired. Please log in again.' });
         }
 
-        // Use the role from the database, so a changed role takes effect straight away
+        // role from db so role changes apply right away
         const user = result.recordset[0];
         req.user = {
             userId: user.user_id,
@@ -39,7 +38,6 @@ const authenticate = async (req, res, next) => {
     }
 };
 
-// Only allow users with one of the given roles
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
@@ -52,8 +50,7 @@ const authorize = (...roles) => {
     };
 };
 
-// For pages guests can also see: check the token if there is one,
-// otherwise carry on as a guest (req.user stays empty)
+// optional auth for guest pages
 const optionalAuthenticate = (req, res, next) => {
     if (!req.headers.authorization) {
         return next();

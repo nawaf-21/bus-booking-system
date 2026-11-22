@@ -37,7 +37,6 @@ const addFavouriteRoute = async (req, res) => {
 
         const pool = await getPool();
 
-        // Check if already exists
         const existing = await pool.request()
             .input('userId', sql.Int, req.user.userId)
             .input('routeId', sql.Int, route_id)

@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { hashPassword } = require('../utils/helpers');
+const { hashPassword, checkPassword } = require('../utils/helpers');
 
 const ROLES = ['Passenger', 'Admin', 'BusCompany'];
 const GENDERS = ['Male', 'Female'];
@@ -26,7 +26,6 @@ const getUserById = async (req, res) => {
     try {
         const id = Number(req.params.id);
 
-        // Users can only see their own profile; the admin can see everyone
         if (req.user.role !== 'Admin' && req.user.userId !== id) {
             return res.status(403).json({ error: 'You can only view your own profile' });
         }
@@ -53,7 +52,6 @@ const getUserById = async (req, res) => {
     }
 };
 
-// Admin creates any kind of account (this is how bus company logins are made)
 const createUser = async (req, res) => {
     try {
         const { full_name, email, password, gender, phone_no, role, company_id } = req.body;
@@ -67,8 +65,9 @@ const createUser = async (req, res) => {
         if (role === 'Passenger' && !GENDERS.includes(gender)) {
             return res.status(400).json({ error: 'Gender is required for passengers' });
         }
-        if (String(password).length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        const passwordProblem = checkPassword(password);
+        if (passwordProblem) {
+            return res.status(400).json({ error: passwordProblem });
         }
 
         const companyId = role === 'BusCompany' ? Number(company_id) : null;
@@ -116,7 +115,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const id = Number(req.params.id);
-        const { full_name, phone_no, gender, role, company_id, is_active } = req.body;
+        const { full_name, phone_no, gender, role, company_id, is_active, password } = req.body;
         const isAdmin = req.user.role === 'Admin';
 
         if (!isAdmin && req.user.userId !== id) {
@@ -127,6 +126,14 @@ const updateUser = async (req, res) => {
         const updates = [];
         const request = pool.request().input('userId', sql.Int, id);
 
+        if (password) {
+            const passwordProblem = checkPassword(password);
+            if (passwordProblem) {
+                return res.status(400).json({ error: passwordProblem });
+            }
+            updates.push('password_hash = @password_hash');
+            request.input('password_hash', sql.VarChar, await hashPassword(String(password)));
+        }
         if (full_name) {
             updates.push('full_name = @full_name');
             request.input('full_name', sql.VarChar, full_name);
@@ -153,7 +160,6 @@ const updateUser = async (req, res) => {
             request.input('role', sql.VarChar, role);
         }
         if (isAdmin && (role || company_id !== undefined)) {
-            // Work out the final role and company after this update
             const current = await pool.request()
                 .input('userId', sql.Int, id)
                 .query('SELECT role, company_id FROM Users WHERE user_id = @userId');
@@ -167,7 +173,6 @@ const updateUser = async (req, res) => {
                 ? (company_id ? Number(company_id) : null)
                 : current.recordset[0].company_id;
 
-            // Only bus company users belong to a company
             if (finalRole !== 'BusCompany') {
                 finalCompanyId = null;
             } else if (!Number.isInteger(finalCompanyId)) {
@@ -189,7 +194,7 @@ const updateUser = async (req, res) => {
             return res.status(400).json({ error: 'No fields to update' });
         }
 
-        // "updates" only ever holds the fixed column names above, never user text
+        // updates only has fixed column names, no user text
         await request.query(`UPDATE Users SET ${updates.join(', ')} WHERE user_id = @userId`);
 
         res.json({ message: 'User updated successfully' });
@@ -210,7 +215,6 @@ const deleteUser = async (req, res) => {
     try {
         const pool = await getPool();
 
-        // Without ?hardDelete=true the account is only switched off
         if (req.query.hardDelete !== 'true') {
             await pool.request()
                 .input('userId', sql.Int, id)
@@ -218,7 +222,6 @@ const deleteUser = async (req, res) => {
             return res.json({ message: 'User deactivated successfully' });
         }
 
-        // Permanently delete the user and everything that belongs to them, all or nothing
         transaction = new sql.Transaction(pool);
         await transaction.begin();
 

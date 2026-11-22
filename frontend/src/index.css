@@ -5,7 +5,6 @@
 }
 
 :root {
-  /* Accent: one muted green, used for buttons, links and highlights */
   --primary: #1f7a5a;
   --primary-dark: #18614a;
   --primary-light: #1f7a5a;
@@ -14,10 +13,8 @@
   --accent-soft: #eaf3ef;
   --accent-border: #bcdccd;
 
-  /* Font */
   --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Status colours */
   --success: #1f7a5a;
   --success-soft: #e7f3ee;
   --danger: #b42318;
@@ -25,19 +22,16 @@
   --warning: #8a5a00;
   --warning-soft: #fdf3e1;
 
-  /* Surfaces */
   --bg: #f7f7f5;
   --surface: #ffffff;
   --surface-muted: #f2f2ef;
   --surface-strong: #ebebe7;
 
-  /* Text */
   --text-primary: #1c1c1a;
   --text-secondary: #3d3d3a;
   --text-muted: #6b6b66;
   --text-accent: #1f7a5a;
 
-  /* Borders and shadows */
   --border-color: #e5e5e2;
   --border-hover: #cfcfca;
   --shadow-sm: 0 1px 2px rgba(28, 28, 26, 0.05);
@@ -63,7 +57,6 @@ body {
   color: var(--primary-dark);
 }
 
-/* Typography */
 h1 {
   font-size: 1.75rem;
   font-weight: 700;
@@ -101,7 +94,7 @@ p {
   padding: 2rem 1.5rem;
 }
 
-/* Buttons */
+/* buttons */
 .btn {
   padding: 0.6rem 1.15rem;
   border: 1px solid transparent;
@@ -188,7 +181,6 @@ p {
   cursor: not-allowed;
 }
 
-/* Cards */
 .card {
   background: var(--surface);
   border-radius: 10px;
@@ -209,7 +201,7 @@ p {
   font-size: 1.05rem;
 }
 
-/* Forms */
+/* forms */
 .form-group {
   margin-bottom: 1.25rem;
 }
@@ -254,7 +246,7 @@ p {
   min-height: 100px;
 }
 
-/* Tables */
+/* tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -297,13 +289,11 @@ table td strong {
   font-weight: 600;
 }
 
-/* Wide tables scroll inside their card on small screens */
 .card:has(> table),
 .card:has(> div > table) {
   overflow-x: auto;
 }
 
-/* Stats */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -336,7 +326,7 @@ table td strong {
   font-variant-numeric: tabular-nums;
 }
 
-/* Navbar */
+/* navbar */
 .navbar {
   background: var(--surface);
   color: var(--text-primary);
@@ -396,11 +386,15 @@ table td strong {
   font-size: 13px;
 }
 
-/* Quick login buttons (demo mode) */
 .quick-login {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
+}
+
+.quick-login .btn {
+  min-width: 0;
+  white-space: normal;
 }
 
 .login-divider {
@@ -420,7 +414,6 @@ table td strong {
   background: var(--border-color);
 }
 
-/* Messages */
 .error {
   color: var(--danger);
   background: var(--danger-soft);
@@ -448,7 +441,7 @@ table td strong {
   color: var(--text-muted);
 }
 
-/* Seat map */
+/* seat map */
 .seat-map {
   display: flex;
   flex-direction: column;
@@ -500,7 +493,7 @@ table td strong {
   color: #ffffff;
 }
 
-/* Booked seats coloured by the passenger's gender */
+/* booked seat colour by gender */
 .seat.booked-female {
   background: #fde4ec;
   color: #b0315f;
@@ -513,7 +506,6 @@ table td strong {
   border-color: #b9cff2;
 }
 
-/* Same width for "Row 1" and "Row 10", so all rows line up */
 .seat-row-label {
   width: 60px;
   flex-shrink: 0;
@@ -524,7 +516,6 @@ table td strong {
   font-size: 14px;
 }
 
-/* Empty space in the middle of each row (the aisle) */
 .seat-aisle {
   width: 28px;
   flex-shrink: 0;
@@ -534,7 +525,6 @@ table td strong {
   border-color: var(--primary);
 }
 
-/* Small colour squares in the seat legend */
 .seat-swatch {
   display: inline-block;
   width: 18px;
@@ -550,7 +540,6 @@ table td strong {
 .seat-swatch.booked-female { background: #fde4ec; border-color: #f6bfd1; }
 .seat-swatch.booked-male { background: #dfeafc; border-color: #b9cff2; }
 
-/* Trip cards */
 .trip-card {
   background: var(--surface);
   border-radius: 10px;
@@ -581,7 +570,6 @@ table td strong {
   font-weight: 600;
 }
 
-/* Small entrance fade, no movement */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -597,8 +585,12 @@ table td strong {
   }
 }
 
-/* Responsive */
+/* responsive */
 @media (max-width: 768px) {
+  .quick-login {
+    grid-template-columns: 1fr;
+  }
+
   .container {
     padding: 1rem;
   }
@@ -629,7 +621,6 @@ table td strong {
   }
 }
 
-/* Links */
 a {
   color: var(--primary-light);
   text-decoration: none;
@@ -641,7 +632,6 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Utility classes */
 .text-primary {
   color: var(--text-primary);
 }
@@ -658,7 +648,6 @@ a:hover {
   color: var(--text-accent);
 }
 
-/* Small round buttons: quick dates, sort options and tabs */
 .pill-group {
   display: flex;
   flex-wrap: wrap;

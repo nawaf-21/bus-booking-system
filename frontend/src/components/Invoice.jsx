@@ -4,7 +4,7 @@ const Invoice = ({ booking, onClose }) => {
   const invoiceRef = useRef(null)
 
   const generatePDF = async () => {
-    // The PDF libraries are large, so they are only loaded when needed
+    // pdf libs are big so load them only when needed
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
       import('html2canvas'),
       import('jspdf')
@@ -79,7 +79,6 @@ const Invoice = ({ booking, onClose }) => {
         overflow: 'auto',
         position: 'relative'
       }}>
-        {/* Action Buttons */}
         <div style={{
           position: 'sticky',
           top: 0,
@@ -131,14 +130,12 @@ const Invoice = ({ booking, onClose }) => {
           </div>
         </div>
 
-        {/* Invoice Content */}
         <div ref={invoiceRef} style={{
           padding: '40px',
           backgroundColor: '#ffffff',
           color: '#212529',
           fontFamily: 'Arial, sans-serif'
         }}>
-          {/* Header */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -188,7 +185,6 @@ const Invoice = ({ booking, onClose }) => {
             </div>
           </div>
 
-          {/* Customer & Trip Info */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
@@ -242,7 +238,6 @@ const Invoice = ({ booking, onClose }) => {
             </div>
           </div>
 
-          {/* Items Table */}
           <div style={{ marginBottom: '30px' }}>
             <table style={{
               width: '100%',
@@ -332,7 +327,6 @@ const Invoice = ({ booking, onClose }) => {
             </table>
           </div>
 
-          {/* Totals */}
           <div style={{
             display: 'flex',
             justifyContent: 'flex-end',
@@ -389,7 +383,6 @@ const Invoice = ({ booking, onClose }) => {
             </div>
           </div>
 
-          {/* Payment Info */}
           <div style={{
             backgroundColor: '#f8f9fa',
             padding: '20px',
@@ -423,7 +416,6 @@ const Invoice = ({ booking, onClose }) => {
             )}
           </div>
 
-          {/* Footer */}
           <div style={{
             marginTop: '40px',
             paddingTop: '20px',

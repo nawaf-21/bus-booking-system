@@ -1,9 +1,5 @@
-// Demo mode: an Axios adapter that answers API requests inside the browser
-// using the sample data in demoData.js, so the app can be explored without the
-// backend. It is only used when demo mode is switched on (see utils/api.js).
-//
-// Changes (bookings, new buses, ...) are kept in sessionStorage, so they
-// survive a page reload but disappear when the browser tab is closed.
+// demo adapter replaces axios so the app works without the backend
+// changes are kept in sessionStorage (gone when the tab closes)
 
 import { createSeedData, DEMO_STORAGE_KEY as STORAGE_KEY } from './demoData'
 
@@ -12,7 +8,7 @@ const load = () => {
     const saved = sessionStorage.getItem(STORAGE_KEY)
     if (saved) return JSON.parse(saved)
   } catch {
-    // sessionStorage unavailable: fall back to fresh data
+    // sessionStorage not available
   }
   return createSeedData()
 }
@@ -23,11 +19,10 @@ const save = () => {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(db))
   } catch {
-    // ignore: data just won't survive a reload
+    // ignore
   }
 }
 
-// ---------- small helpers ----------
 
 class DemoError extends Error {
   constructor(status, message) {
@@ -57,7 +52,6 @@ const userById = (id) => db.users.find(u => u.user_id === id)
 const publicUser = (u) => ({ id: u.user_id, fullName: u.full_name, email: u.email, role: u.role, companyId: u.company_id })
 const tokenFor = (u) => `demo-token-${u.user_id}`
 
-// ---------- views (the shapes the pages expect) ----------
 
 const routeView = (r) => ({
   ...r,
@@ -119,6 +113,7 @@ const bookingView = (b) => {
     company_id: trip.company_id,
     route_id: trip.route_id,
     departure_datetime: trip.departure_datetime,
+    trip_status: trip.trip_status,
     fare_pkr: trip.fare_pkr,
     total_seats: b.seats.length,
     total_seats_booked: b.seats.length,
@@ -148,7 +143,7 @@ const feedbackView = (f) => {
 const seatsForTrip = (trip) => {
   const bus = busById(trip.bus_id)
   const booked = bookedSeatIds(trip.trip_id)
-  // Gender of the passenger in each booked seat (for the pink/blue seats)
+  // gender per booked seat (pink/blue seats)
   const genders = {}
   db.bookings
     .filter(b => b.trip_id === trip.trip_id && b.booking_status === 'Confirmed')
@@ -163,7 +158,10 @@ const seatsForTrip = (trip) => {
       seat_column: (i % 4) + 1,
       seat_number: `${String.fromCharCode(64 + row)}${(i % 4) + 1}`,
       seat_status: booked.has(seatId) ? 'Booked' : 'Available',
-      booked_gender: genders[seatId] || null
+      booked_gender: genders[seatId] || null,
+      // seats 1-2 and 3-4 are side by side, aisle in between
+      adjacent_seat_ids: [index % 4 === 1 || index % 4 === 3 ? seatId + 1 : seatId - 1]
+        .filter(id => id - trip.trip_id * 100 >= 1 && id - trip.trip_id * 100 <= bus.total_seats)
     }
   })
 }
@@ -181,7 +179,6 @@ const pricing = (trip, seatCount, promoCode) => {
   return { baseAmount, discountAmount, finalAmount: baseAmount - discountAmount }
 }
 
-// ---------- auth ----------
 
 const currentUser = (ctx) => {
   const match = /demo-token-(\d+)/.exec(ctx.token || '')
@@ -198,10 +195,8 @@ const requireRole = (ctx, ...roles) => {
 
 const companyOf = (ctx) => requireRole(ctx, 'BusCompany').company_id
 
-// ---------- endpoints ----------
 
 const handlers = [
-  // Auth
   ['post', '/auth/login', ({ body }) => {
     const user = db.users.find(u => u.email.toLowerCase() === String(body.email || '').toLowerCase())
     if (!user) fail(401, 'Invalid email or password')
@@ -221,14 +216,12 @@ const handlers = [
   }],
   ['get', '/auth/me', (ctx) => ({ user: publicUser(currentUser(ctx)) })],
 
-  // Public lists
   ['get', '/cities', () => ({ cities: db.cities })],
   ['get', '/companies', () => ({
     companies: db.companies.map(c => ({ ...c, office_city: cityName(c.office_city_id) }))
   })],
   ['get', '/routes', () => ({ routes: db.routes.map(routeView) })],
 
-  // Trips
   ['get', '/trips/search', ({ params }) => {
     const now = new Date()
     const trips = tripViews(db.trips.filter(t => t.trip_status === 'Scheduled' && new Date(t.departure_datetime) > now))
@@ -268,6 +261,7 @@ const handlers = [
     if (body.departure_datetime) trip.departure_datetime = body.departure_datetime
     if (body.arrival_datetime) trip.arrival_datetime = body.arrival_datetime
     if (body.fare_pkr) trip.fare_pkr = num(body.fare_pkr)
+    if (body.status === 'Completed') trip.trip_status = 'Completed'
     return { message: 'Trip updated' }
   }],
   ['delete', '/trips/:id', (ctx) => {
@@ -278,8 +272,6 @@ const handlers = [
     return { message: 'Trip cancelled' }
   }],
 
-  // Booking flow
-  // Admin promo codes page (simple version for demo mode)
   ['get', '/promocodes', () => ({
     promoCodes: db.promoCodes.map((p, i) => ({
       promo_id: i + 1,
@@ -368,7 +360,6 @@ const handlers = [
     return { message: 'Booking cancelled' }
   }],
 
-  // Favourites
   ['get', '/favourites/routes', (ctx) => {
     const user = currentUser(ctx)
     const favouriteRoutes = db.favourites
@@ -376,7 +367,7 @@ const handlers = [
       .map(f => {
         const route = routeView(routeById(f.route_id))
         return {
-          fav_id: f.fav_id, route_name: route.route_name,
+          fav_id: f.fav_id, route_id: f.route_id, route_name: route.route_name,
           from_city_id: route.from_city_id, to_city_id: route.to_city_id,
           preferred_company_id: f.preferred_company_id,
           preferred_company_name: companyById(f.preferred_company_id)?.company_name,
@@ -411,7 +402,6 @@ const handlers = [
     return { message: 'Removed from favourites' }
   }],
 
-  // Bus company
   ['get', '/company/overview', (ctx) => {
     const companyId = companyOf(ctx)
     const trips = tripViews(db.trips).filter(t => t.company_id === companyId)
@@ -484,7 +474,6 @@ const handlers = [
     return { message: 'Bus deleted' }
   }],
 
-  // Admin
   ['get', '/admin/overview', (ctx) => {
     requireRole(ctx, 'Admin')
     const confirmed = bookingViews(db.bookings.filter(b => b.booking_status === 'Confirmed'))
@@ -559,7 +548,6 @@ const handlers = [
     return { message: 'Seat reserved' }
   }],
 
-  // Admin: users
   ['get', '/users', (ctx) => {
     requireRole(ctx, 'Admin')
     return { users: db.users.map(u => ({ ...u, company_name: companyById(u.company_id)?.company_name || null })) }
@@ -592,7 +580,6 @@ const handlers = [
     return { message: 'User deleted' }
   }],
 
-  // Admin: companies
   ['post', '/companies', (ctx) => {
     requireRole(ctx, 'Admin')
     const { body } = ctx
@@ -617,13 +604,12 @@ const handlers = [
     return { message: 'Company deleted' }
   }],
 
-  // Chatbot: there is no AI behind demo mode, so reply honestly with a fixed message
+  // no AI in demo mode, just a fixed reply
   ['post', '/chatbot/chat', () => ({
     response: "Sorry, I can't answer questions right now. You can search trips from the home page, and the promo code MUSAFIR10 gives 10% off at checkout."
   })]
 ]
 
-// Turn "/trips/:id/seats" into a regex once
 const compiled = handlers.map(([method, path, handler]) => ({
   method,
   regex: new RegExp('^' + path.replace(/:id/g, '(\\d+)') + '$'),
@@ -637,7 +623,7 @@ const readToken = (headers) => {
 }
 
 export default async function demoAdapter(config) {
-  // Short delay so loading states behave like a real network
+  // small delay to act like a real network
   await new Promise(resolve => setTimeout(resolve, 150))
 
   const [path, query = ''] = config.url.split('?')

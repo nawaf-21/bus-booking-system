@@ -85,7 +85,7 @@ Then open http://localhost:3000.
 
 ### Sample accounts
 
-All sample accounts use the password `demo123`.
+All sample accounts use the password `Musafir123`. New passwords must be at least 8 characters with at least one letter and one number. While running `npm run dev` or `npm run demo`, the Login page also has quick-login buttons for a passenger, a bus company and the admin.
 
 | Role | Email |
 |------|-------|

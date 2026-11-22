@@ -10,10 +10,16 @@ const TripResults = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  // Trips whose route was saved to favourites on this page
-  const [savedTrips, setSavedTrips] = useState([])
-  // How the results are ordered: 'departure', 'price' or 'rating'
+  // "routeId-companyId" keys for saved favourites
+  const [savedRoutes, setSavedRoutes] = useState([])
   const [sortBy, setSortBy] = useState('departure')
+
+  useEffect(() => {
+    if (user?.role !== 'Passenger') return
+    api.get('/favourites/routes')
+      .then(res => setSavedRoutes(res.data.favouriteRoutes.map(f => `${f.route_id}-${f.preferred_company_id}`)))
+      .catch(() => {})
+  }, [user])
 
   useEffect(() => {
     const params = {}
@@ -35,13 +41,12 @@ const TripResults = () => {
   const handleSaveRoute = async (trip) => {
     try {
       await api.post('/favourites/routes', { route_id: trip.route_id, preferred_company_id: trip.company_id })
-      setSavedTrips([...savedTrips, trip.trip_id])
+      setSavedRoutes([...savedRoutes, `${trip.route_id}-${trip.company_id}`])
     } catch (err) {
       alert(getErrorMessage(err, 'Could not save this route'))
     }
   }
 
-  // Go back to the home page with the same search filled in
   const backToSearch = () => {
     navigate(`/?${searchParams.toString()}`)
   }
@@ -54,8 +59,7 @@ const TripResults = () => {
     return <div className="loading">Loading trips...</div>
   }
 
-  // Sort a copy of the list (never change state directly).
-  // Rating: highest first, trips with no rating last. Ties go by departure time.
+  // sort a copy, no rating goes last
   const byDeparture = (a, b) => new Date(a.departure_datetime) - new Date(b.departure_datetime)
   const sortedTrips = [...trips].sort((a, b) => {
     if (sortBy === 'price') return a.fare_pkr - b.fare_pkr || byDeparture(a, b)
@@ -167,10 +171,10 @@ const TripResults = () => {
                   <button
                     className="btn btn-secondary"
                     onClick={() => handleSaveRoute(trip)}
-                    disabled={savedTrips.includes(trip.trip_id)}
+                    disabled={savedRoutes.includes(`${trip.route_id}-${trip.company_id}`)}
                     style={{ width: '100%', marginTop: '8px' }}
                   >
-                    {savedTrips.includes(trip.trip_id) ? 'Saved to Favourites' : 'Save Route'}
+                    {savedRoutes.includes(`${trip.route_id}-${trip.company_id}`) ? 'Saved to Favourites' : 'Save Route'}
                   </button>
                 )}
               </div>

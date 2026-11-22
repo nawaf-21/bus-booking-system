@@ -1,24 +1,15 @@
 const OpenAI = require('openai');
 const { getPool } = require('../config/db');
 
-// AI provider settings come ONLY from the environment (backend/.env, never
-// committed). Never write a key in source code.
-//
-// Any OpenAI-compatible provider works (OpenAI, Groq, OpenRouter, Google
-// Gemini's OpenAI endpoint, a local Ollama server, ...):
-//   AI_API_KEY   the provider's key (not needed for a local Ollama server)
-//   AI_BASE_URL  the provider's OpenAI-compatible URL (empty = OpenAI itself)
-//   AI_MODEL     the model name offered by that provider
+// ai settings only from .env, any openai-compatible api works
 const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
 const AI_BASE_URL = process.env.AI_BASE_URL || undefined;
 const AI_MODEL = process.env.AI_MODEL || 'gpt-3.5-turbo';
 
-// The chatbot is switched off until a key (or a local base URL) is configured
 const openai = AI_API_KEY || AI_BASE_URL
   ? new OpenAI({ apiKey: AI_API_KEY || 'not-needed', baseURL: AI_BASE_URL })
   : null;
 
-// Knowledge base about Musafir
 const KNOWLEDGE_BASE = `
 You are a helpful customer support assistant for Musafir, a bus ticket booking platform for Pakistan.
 
@@ -156,8 +147,7 @@ A: Bus companies have their own dashboard where they can create routes, add buse
 - Be friendly and helpful.
 `;
 
-// Get the trips of the next 7 days from the database, so the chatbot can
-// answer questions like "is there a bus from Peshawar to Lahore tomorrow?"
+// next 7 days of trips so the bot can answer trip questions
 const getUpcomingTrips = async () => {
   const pool = await getPool();
   const result = await pool.request().query(`
@@ -185,7 +175,6 @@ const getUpcomingTrips = async () => {
     ORDER BY t.departure_datetime
   `);
 
-  // Today's date (from the database clock) so "tomorrow" can be worked out
   const dateResult = await pool.request().query(
     `SELECT FORMAT(GETDATE(), 'dddd dd MMMM yyyy, hh:mm tt') AS now_text`
   );
@@ -214,8 +203,7 @@ const chat = async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Only accept plain user/assistant turns from the browser, so a client
-    // cannot inject its own "system" instructions
+    // only user/assistant msgs so client can't inject a system prompt
     const history = Array.isArray(conversationHistory)
       ? conversationHistory
           .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
@@ -223,8 +211,7 @@ const chat = async (req, res) => {
           .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }))
       : [];
 
-    // Add the live trips to the instructions. If the database is down, the
-    // chatbot still answers general questions.
+    // if db is down bot still answers general stuff
     let tripData = '';
     try {
       tripData = await getUpcomingTrips();
@@ -233,7 +220,6 @@ const chat = async (req, res) => {
       tripData = '\n## LIVE TRIP DATA\nTrip data could not be loaded right now. Ask the user to use the search on the home page.\n';
     }
 
-    // Build conversation context
     const messages = [
       {
         role: 'system',

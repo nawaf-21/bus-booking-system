@@ -83,14 +83,13 @@ const AdminCompanies = () => {
           showAlert('Company and all associated data deleted successfully!', 'success')
           loadCompanies()
         } catch (err) {
-          // e.g. 409 when the company still has trips or users
+          // e.g. 409 if it still has trips or users
           showAlert(err.response?.data?.error || 'Failed to delete company', 'error')
         }
       }
     })
   }
 
-  // Suspend an active company, or make a suspended/inactive one active again
   const handleToggleStatus = (company) => {
     const newStatus = company.status === 'Active' ? 'Suspended' : 'Active'
     setConfirmDialog({
@@ -180,7 +179,6 @@ const AdminCompanies = () => {
         </table>
       )}
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
@@ -191,7 +189,6 @@ const AdminCompanies = () => {
         confirmText={confirmDialog.confirmText || 'Confirm'}
       />
 
-      {/* Add Company Modal */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -258,7 +255,6 @@ const AdminCompanies = () => {
           </form>
       </Modal>
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}

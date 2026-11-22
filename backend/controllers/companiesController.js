@@ -4,8 +4,6 @@ const getAllCompanies = async (req, res) => {
     try {
         const pool = await getPool();
 
-        // The admin sees every company (to suspend / activate them),
-        // everyone else only sees active companies
         const isAdmin = req.user && req.user.role === 'Admin';
         const result = await pool.request().query(`
             SELECT bc.company_id, bc.company_name, bc.contact_email, bc.contact_phone,
@@ -58,7 +56,6 @@ const createCompany = async (req, res) => {
 
         const pool = await getPool();
 
-        // Create company (no transaction needed since we're only creating one entity)
         const companyResult = await pool.request()
             .input('company_name', sql.VarChar, company_name)
             .input('contact_email', sql.VarChar, contact_email)
@@ -145,16 +142,14 @@ const updateCompany = async (req, res) => {
 const deleteCompany = async (req, res) => {
     try {
         const { id } = req.params;
-        const { hardDelete } = req.query; // Admin can hard delete
+        const { hardDelete } = req.query;
         const pool = await getPool();
 
         if (hardDelete === 'true' && req.user.role === 'Admin') {
-            // Hard delete - cascade delete buses and seats
             const transaction = new sql.Transaction(pool);
             await transaction.begin();
 
             try {
-                // Delete seats (cascade from buses)
                 const busesResult = await new sql.Request(transaction)
                     .input('companyId', sql.Int, id)
                     .query('SELECT bus_id FROM Buses WHERE company_id = @companyId');
@@ -165,12 +160,10 @@ const deleteCompany = async (req, res) => {
                         .query('DELETE FROM Seats WHERE bus_id = @busId');
                 }
 
-                // Delete buses
                 await new sql.Request(transaction)
                     .input('companyId', sql.Int, id)
                     .query('DELETE FROM Buses WHERE company_id = @companyId');
 
-                // Delete company
                 await new sql.Request(transaction)
                     .input('companyId', sql.Int, id)
                     .query('DELETE FROM BusCompanies WHERE company_id = @companyId');
@@ -182,7 +175,6 @@ const deleteCompany = async (req, res) => {
                 throw error;
             }
         } else {
-            // Soft delete
             await pool.request()
                 .input('companyId', sql.Int, id)
                 .query("UPDATE BusCompanies SET status = 'Suspended' WHERE company_id = @companyId");
@@ -190,7 +182,7 @@ const deleteCompany = async (req, res) => {
         }
     } catch (error) {
         console.error('Delete company error:', error);
-        // 547 = the company still has trips, bookings or users linked to it
+        // 547 = fk error, company still has linked rows
         if (error.number === 547) {
             return res.status(409).json({ error: 'This company still has trips or users. Suspend it instead of deleting it.' });
         }

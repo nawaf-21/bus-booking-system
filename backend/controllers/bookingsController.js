@@ -4,11 +4,9 @@ const { validateGenderSeatRules, toIdList, addIdInputs } = require('../utils/hel
 const PAYMENT_METHODS = ['Card', 'JazzCash', 'Easypaisa', 'CashOnCounter'];
 const GENDERS = ['Male', 'Female'];
 
-// An error the passenger can fix (shown as a 400 message)
 class BookingError extends Error {}
 
-// Checks everything about a booking request and works out the price.
-// "db" is the connection pool (preview) or an open transaction (confirm).
+// db is the pool (preview) or a transaction (confirm)
 const checkBooking = async (db, body) => {
     const { trip_id, seat_ids, passenger_names, passenger_genders, promo_code } = body;
 
@@ -33,7 +31,6 @@ const checkBooking = async (db, body) => {
         throw new BookingError('Please choose a gender for every passenger');
     }
 
-    // The trip must exist, be scheduled and not have left yet
     const tripResult = await db.request()
         .input('tripId', sql.Int, tripId)
         .query(`
@@ -54,7 +51,6 @@ const checkBooking = async (db, body) => {
     }
     const trip = tripResult.recordset[0];
 
-    // The seats must belong to this trip's bus and not be booked already
     const seatRequest = db.request()
         .input('tripId', sql.Int, tripId)
         .input('busId', sql.Int, trip.bus_id);
@@ -83,15 +79,12 @@ const checkBooking = async (db, body) => {
         throw new BookingError(genderCheck.error);
     }
 
-    // Price
     const baseAmount = Number(trip.fare_pkr) * seatIds.length;
     let discountAmount = 0;
     let promo = null;
 
     if (promo_code) {
         const code = String(promo_code).trim().toUpperCase();
-        // Load the code with flags for each rule, so we can tell the
-        // passenger exactly why a code does not work
         const promoResult = await db.request()
             .input('code', sql.VarChar, code)
             .query(`
@@ -136,7 +129,6 @@ const checkBooking = async (db, body) => {
         discountAmount = promo.discount_type === 'Percentage'
             ? Math.round(baseAmount * Number(promo.discount_value)) / 100
             : Number(promo.discount_value);
-        // A discount can never make the ticket cost less than zero
         discountAmount = Math.min(discountAmount, baseAmount);
     }
 
@@ -202,7 +194,7 @@ const confirmBooking = async (req, res) => {
     try {
         const pool = await getPool();
         transaction = new sql.Transaction(pool);
-        // SERIALIZABLE stops two people booking the same seat at the same moment
+        // serializable stops double booking the same seat
         await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
         const booking = await checkBooking(transaction, req.body);
@@ -240,7 +232,7 @@ const confirmBooking = async (req, res) => {
                 `);
         }
 
-        // Payments are simulated: no real money is taken in this project
+        // payments are simulated
         await transaction.request()
             .input('bookingId', sql.Int, bookingId)
             .input('amount', sql.Decimal(10, 2), booking.finalAmount)
@@ -284,6 +276,7 @@ const getMyBookings = async (req, res) => {
                 SELECT 
                     b.booking_id,
                     b.trip_id,
+                    t.status AS trip_status,
                     b.booking_datetime,
                     b.total_amount_pkr,
                     b.discount_amount_pkr,
@@ -321,7 +314,7 @@ const getMyBookings = async (req, res) => {
                 GROUP BY 
                     b.booking_id, b.trip_id, b.user_id, b.booking_datetime, b.total_amount_pkr, b.discount_amount_pkr,
                     b.status, u.full_name, u.email, u.phone_no, c1.city_name, c2.city_name,
-                    bc.company_name, t.departure_datetime, t.arrival_datetime, t.fare_pkr,
+                    bc.company_name, t.status, t.departure_datetime, t.arrival_datetime, t.fare_pkr,
                     i.invoice_number, p.payment_method, p.status, p.paid_at
                 ORDER BY b.booking_datetime DESC
             `);
@@ -372,7 +365,6 @@ const getBookingById = async (req, res) => {
             return res.status(404).json({ error: 'Booking not found' });
         }
 
-        // Get booking details (seats and passengers)
         const detailsResult = await pool.request()
             .input('bookingId', sql.Int, id)
             .query(`
@@ -399,12 +391,11 @@ const cancelBooking = async (req, res) => {
 
         const pool = await getPool();
 
-        // Check if booking belongs to user
         const bookingCheck = await pool.request()
             .input('bookingId', sql.Int, id)
             .input('userId', sql.Int, req.user.userId)
             .query(`
-                SELECT b.booking_id, b.status, t.departure_datetime
+                SELECT b.booking_id, b.status, t.departure_datetime, t.status AS trip_status
                 FROM Bookings b
                 INNER JOIN Trips t ON b.trip_id = t.trip_id
                 WHERE b.booking_id = @bookingId AND b.user_id = @userId
@@ -416,16 +407,14 @@ const cancelBooking = async (req, res) => {
 
         const booking = bookingCheck.recordset[0];
 
-        if (booking.status === 'Cancelled') {
-            return res.status(400).json({ error: 'Booking is already cancelled' });
+        if (booking.status !== 'Confirmed') {
+            return res.status(400).json({ error: 'This booking is already cancelled' });
         }
 
-        // Check if trip has already departed
-        if (new Date(booking.departure_datetime) < new Date()) {
+        if (new Date(booking.departure_datetime) < new Date() || booking.trip_status === 'Completed') {
             return res.status(400).json({ error: 'Cannot cancel booking for a trip that has already departed' });
         }
 
-        // Cancel booking
         await pool.request()
             .input('bookingId', sql.Int, id)
             .input('reason', sql.VarChar, cancellation_reason || 'Cancelled by user')
@@ -437,7 +426,6 @@ const cancelBooking = async (req, res) => {
                 WHERE booking_id = @bookingId
             `);
 
-        // Update payment status to refunded
         await pool.request()
             .input('bookingId', sql.Int, id)
             .query(`

@@ -1,16 +1,7 @@
--- =============================================
--- QUICK DEMO QUERIES - SHOW DATABASE STATE
--- Perform actions in website, then run these to show results
--- =============================================
-
 USE TravelBookingDB;
 GO
 
--- =============================================
--- SECTION 1: USERS
--- =============================================
-
--- 1.1 All Users
+-- All users
 SELECT 
     user_id,
     full_name,
@@ -22,7 +13,7 @@ FROM Users
 ORDER BY role, full_name;
 GO
 
--- 1.2 Users by Role
+-- Users by role
 SELECT 
     role,
     COUNT(*) AS count,
@@ -32,13 +23,13 @@ FROM Users
 GROUP BY role;
 GO
 
--- 1.3 Check if Specific User Exists (After deletion in website)
+-- Check one user
 SELECT user_id, full_name, email, role
 FROM Users
-WHERE user_id = 5;  -- Change to user_id you deleted
+WHERE user_id = 5;
 GO
 
--- 1.4 Check Company Manager User (After creating company in website)
+-- Company manager users
 SELECT 
     u.user_id,
     u.full_name,
@@ -52,11 +43,7 @@ WHERE u.role = 'BusCompany'
 ORDER BY u.created_at DESC;
 GO
 
--- =============================================
--- SECTION 2: BOOKINGS
--- =============================================
-
--- 2.1 All Bookings
+-- All bookings
 SELECT 
     b.booking_id,
     u.full_name AS passenger,
@@ -77,7 +64,7 @@ INNER JOIN BusCompanies bc ON bus.company_id = bc.company_id
 ORDER BY b.booking_datetime DESC;
 GO
 
--- 2.2 Bookings for Specific User (After user deletion, should be empty)
+-- Bookings for one user
 SELECT 
     b.booking_id,
     c1.city_name + N' → ' + c2.city_name AS route,
@@ -88,10 +75,10 @@ INNER JOIN Trips t ON b.trip_id = t.trip_id
 INNER JOIN Routes r ON t.route_id = r.route_id
 INNER JOIN Cities c1 ON r.from_city_id = c1.city_id
 INNER JOIN Cities c2 ON r.to_city_id = c2.city_id
-WHERE b.user_id = 5;  -- Change to deleted user_id
+WHERE b.user_id = 5;
 GO
 
--- 2.3 Booking Statistics
+-- Booking stats
 SELECT 
     status,
     COUNT(*) AS count,
@@ -101,11 +88,7 @@ GROUP BY status
 ORDER BY count DESC;
 GO
 
--- =============================================
--- SECTION 3: TRIPS
--- =============================================
-
--- 3.1 All Active Trips
+-- Active trips
 SELECT 
     t.trip_id,
     c1.city_name + N' → ' + c2.city_name AS route,
@@ -123,11 +106,7 @@ WHERE t.status = 'Scheduled'
 ORDER BY t.departure_datetime;
 GO
 
--- =============================================
--- SECTION 4: COMPANIES
--- =============================================
-
--- 4.1 All Bus Companies
+-- Bus companies
 SELECT 
     company_id,
     company_name,
@@ -138,7 +117,7 @@ FROM BusCompanies
 ORDER BY company_name;
 GO
 
--- 4.2 Company Revenue
+-- Company revenue
 SELECT 
     bc.company_name,
     COUNT(bk.booking_id) AS total_bookings,
@@ -152,11 +131,7 @@ GROUP BY bc.company_name
 ORDER BY total_revenue DESC;
 GO
 
--- =============================================
--- SECTION 5: TOP ROUTES
--- =============================================
-
--- 5.1 Top 5 Routes by Bookings
+-- Top 5 routes by bookings
 SELECT TOP 5
     c1.city_name + N' → ' + c2.city_name AS route,
     COUNT(b.booking_id) AS total_bookings,
@@ -171,11 +146,7 @@ GROUP BY c1.city_name, c2.city_name
 ORDER BY total_bookings DESC;
 GO
 
--- =============================================
--- SECTION 6: PAYMENTS & INVOICES
--- =============================================
-
--- 6.1 Recent Payments
+-- Recent payments
 SELECT TOP 10
     p.payment_id,
     u.full_name AS customer,
@@ -189,7 +160,7 @@ INNER JOIN Users u ON b.user_id = u.user_id
 ORDER BY p.paid_at DESC;
 GO
 
--- 6.2 Recent Invoices
+-- Recent invoices
 SELECT TOP 10
     i.invoice_number,
     u.full_name AS customer,
@@ -206,11 +177,7 @@ INNER JOIN Cities c2 ON r.to_city_id = c2.city_id
 ORDER BY i.invoice_date DESC;
 GO
 
--- =============================================
--- SECTION 7: FEEDBACK
--- =============================================
-
--- 7.1 Recent Feedback
+-- Recent feedback
 SELECT TOP 10
     u.full_name AS user_name,
     c1.city_name + N' → ' + c2.city_name AS route,
@@ -229,11 +196,7 @@ INNER JOIN BusCompanies bc ON b.company_id = bc.company_id
 ORDER BY f.created_at DESC;
 GO
 
--- =============================================
--- SECTION 8: SYSTEM OVERVIEW
--- =============================================
-
--- 8.1 Complete System Statistics
+-- Overall counts
 SELECT 
     (SELECT COUNT(*) FROM Users WHERE role = 'Passenger') AS total_passengers,
     (SELECT COUNT(*) FROM BusCompanies) AS total_companies,
@@ -243,9 +206,3 @@ SELECT
     (SELECT COUNT(*) FROM Bookings WHERE status = 'Confirmed') AS total_bookings,
     (SELECT SUM(total_amount_pkr - discount_amount_pkr) FROM Bookings WHERE status = 'Confirmed') AS total_revenue;
 GO
-
--- =============================================
--- END
--- =============================================
--- Use these queries to show database state after actions in website
--- =============================================

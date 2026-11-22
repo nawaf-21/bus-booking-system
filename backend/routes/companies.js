@@ -3,7 +3,6 @@ const router = express.Router();
 const { authenticate, optionalAuthenticate, authorize } = require('../middleware/auth');
 const companiesController = require('../controllers/companiesController');
 
-// Guests can see the list too (only Active companies; the admin sees all)
 router.get('/', optionalAuthenticate, companiesController.getAllCompanies);
 router.get('/:id', authenticate, companiesController.getCompanyById);
 router.post('/', authenticate, authorize('Admin'), companiesController.createCompany);

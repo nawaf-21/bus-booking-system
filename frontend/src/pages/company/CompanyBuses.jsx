@@ -155,7 +155,6 @@ const CompanyBuses = () => {
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button className="btn btn-sm" onClick={() => handleEdit(bus)}>Edit</button>
-                      {/* An inactive bus is already "deleted" */}
                       {bus.status !== 'Inactive' && (
                         <button className="btn btn-sm btn-danger" onClick={() => handleDelete(bus.bus_id)}>
                           Delete
@@ -170,7 +169,6 @@ const CompanyBuses = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         isOpen={showAddModal || showEditModal}
         onClose={() => {
@@ -254,7 +252,6 @@ const CompanyBuses = () => {
             </form>
       </Modal>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
@@ -264,7 +261,6 @@ const CompanyBuses = () => {
         type={confirmDialog.type}
       />
 
-      {/* Alert */}
       {alert.isOpen && (
         <Alert
           message={alert.message}
