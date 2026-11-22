@@ -4,6 +4,13 @@ import Modal from '../../components/Modal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Alert from '../../components/Alert'
 
+// Format a date for an <input type="datetime-local"> in the user's own time zone
+const toLocalInput = (value) => {
+  const d = new Date(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const CompanyTripManagement = () => {
   const [trips, setTrips] = useState([])
   const [buses, setBuses] = useState([])
@@ -40,9 +47,11 @@ const CompanyTripManagement = () => {
       })
   }
 
+  // Keep all buses so the edit form can still show a bus that is no longer Active.
+  // The add form only lists Active buses.
   const loadBuses = () => {
     api.get('/company/buses')
-      .then(res => setBuses(res.data.buses.filter(b => b.status === 'Active')))
+      .then(res => setBuses(res.data.buses))
       .catch(err => console.error('Error loading buses:', err))
   }
 
@@ -80,9 +89,9 @@ const CompanyTripManagement = () => {
           bus_id: tripData.bus_id || trip.bus_id || '',
           route_id: routeId || '',
           departure_datetime: (tripData.departure_datetime || trip.departure_datetime) ? 
-            new Date(tripData.departure_datetime || trip.departure_datetime).toISOString().slice(0, 16) : '',
+            toLocalInput(tripData.departure_datetime || trip.departure_datetime) : '',
           arrival_datetime: (tripData.arrival_datetime || trip.arrival_datetime) ? 
-            new Date(tripData.arrival_datetime || trip.arrival_datetime).toISOString().slice(0, 16) : '',
+            toLocalInput(tripData.arrival_datetime || trip.arrival_datetime) : '',
           fare_pkr: tripData.fare_pkr || trip.fare_pkr || ''
         })
         setShowEditModal(true)
@@ -93,8 +102,8 @@ const CompanyTripManagement = () => {
         setFormData({
           bus_id: trip.bus_id || '',
           route_id: route?.route_id || '',
-          departure_datetime: trip.departure_datetime ? new Date(trip.departure_datetime).toISOString().slice(0, 16) : '',
-          arrival_datetime: trip.arrival_datetime ? new Date(trip.arrival_datetime).toISOString().slice(0, 16) : '',
+          departure_datetime: trip.departure_datetime ? toLocalInput(trip.departure_datetime) : '',
+          arrival_datetime: trip.arrival_datetime ? toLocalInput(trip.arrival_datetime) : '',
           fare_pkr: trip.fare_pkr || ''
         })
         setShowEditModal(true)
@@ -117,8 +126,9 @@ const CompanyTripManagement = () => {
         })
         showAlert('Trip created successfully!', 'success')
       } else {
+        // Route and bus cannot be changed on an existing trip
         await api.put(`/trips/${selectedTrip.trip_id}`, {
-          ...formData,
+          fare_pkr: formData.fare_pkr,
           departure_datetime: new Date(formData.departure_datetime).toISOString(),
           arrival_datetime: new Date(formData.arrival_datetime).toISOString()
         })
@@ -193,12 +203,15 @@ const CompanyTripManagement = () => {
                   <td>{trip.trip_status}</td>
                   <td>{trip.booked_seats || 0} / {trip.total_seats || 0}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn btn-sm" onClick={() => handleEdit(trip)}>Edit</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(trip.trip_id)}>
-                        Cancel
-                      </button>
-                    </div>
+                    {/* Only scheduled trips can be edited or cancelled */}
+                    {trip.trip_status === 'Scheduled' ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-sm" onClick={() => handleEdit(trip)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(trip.trip_id)}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : '-'}
                   </td>
                 </tr>
               ))}
@@ -223,6 +236,7 @@ const CompanyTripManagement = () => {
                 <select
                   value={formData.route_id}
                   onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
+                  disabled={showEditModal}
                   required
                 >
                   <option value="">Select Route</option>
@@ -238,15 +252,25 @@ const CompanyTripManagement = () => {
                 <select
                   value={formData.bus_id}
                   onChange={(e) => setFormData({ ...formData, bus_id: e.target.value })}
+                  disabled={showEditModal}
                   required
                 >
                   <option value="">Select Bus</option>
-                  {buses.map(bus => (
-                    <option key={bus.bus_id} value={bus.bus_id}>
-                      {bus.bus_name || bus.bus_model} - {bus.bus_type} ({bus.total_seats} seats)
-                    </option>
-                  ))}
+                  {/* New trips can only use Active buses; when editing show the trip's own bus */}
+                  {buses
+                    .filter(bus => showEditModal ? String(bus.bus_id) === String(formData.bus_id) : bus.status === 'Active')
+                    .map(bus => (
+                      <option key={bus.bus_id} value={bus.bus_id}>
+                        {bus.bus_name || bus.bus_model} - {bus.bus_type} ({bus.total_seats} seats)
+                        {bus.status !== 'Active' ? ` [${bus.status}]` : ''}
+                      </option>
+                    ))}
                 </select>
+                {showEditModal && (
+                  <small style={{ color: 'var(--text-secondary)' }}>
+                    Route and bus cannot be changed. Cancel this trip and add a new one instead.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Departure Date & Time *</label>
@@ -254,6 +278,7 @@ const CompanyTripManagement = () => {
                   type="datetime-local"
                   value={formData.departure_datetime}
                   onChange={(e) => setFormData({ ...formData, departure_datetime: e.target.value })}
+                  min={toLocalInput(new Date())}
                   required
                 />
               </div>
@@ -263,6 +288,7 @@ const CompanyTripManagement = () => {
                   type="datetime-local"
                   value={formData.arrival_datetime}
                   onChange={(e) => setFormData({ ...formData, arrival_datetime: e.target.value })}
+                  min={formData.departure_datetime || toLocalInput(new Date())}
                   required
                 />
               </div>
@@ -272,7 +298,7 @@ const CompanyTripManagement = () => {
                   type="number"
                   value={formData.fare_pkr}
                   onChange={(e) => setFormData({ ...formData, fare_pkr: e.target.value })}
-                  min="0"
+                  min="1"
                   step="0.01"
                   required
                 />

@@ -75,10 +75,11 @@ const AdminUsers = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // Prepare data - ensure company_id is number or empty string
+      // Only bus company users have a company; everyone else gets null
+      // so the old company is cleared when the role changes
       const submitData = {
         ...formData,
-        company_id: formData.role === 'BusCompany' && formData.company_id ? parseInt(formData.company_id) : (formData.role === 'BusCompany' ? null : undefined),
+        company_id: formData.role === 'BusCompany' && formData.company_id ? parseInt(formData.company_id) : null,
         gender: formData.role === 'Passenger' ? formData.gender : undefined
       }
       

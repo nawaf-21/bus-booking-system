@@ -81,9 +81,33 @@ const AdminCompanies = () => {
         try {
           await api.delete(`/companies/${companyId}?hardDelete=true`)
           showAlert('Company and all associated data deleted successfully!', 'success')
-          setTimeout(() => window.location.reload(), 1500)
+          loadCompanies()
         } catch (err) {
+          // e.g. 409 when the company still has trips or users
           showAlert(err.response?.data?.error || 'Failed to delete company', 'error')
+        }
+      }
+    })
+  }
+
+  // Suspend an active company, or make a suspended/inactive one active again
+  const handleToggleStatus = (company) => {
+    const newStatus = company.status === 'Active' ? 'Suspended' : 'Active'
+    setConfirmDialog({
+      isOpen: true,
+      type: 'warning',
+      title: newStatus === 'Suspended' ? 'Suspend Company' : 'Activate Company',
+      message: newStatus === 'Suspended'
+        ? `Suspend ${company.company_name}? Its trips will no longer show in search.`
+        : `Make ${company.company_name} active again?`,
+      confirmText: newStatus === 'Suspended' ? 'Suspend' : 'Activate',
+      onConfirm: async () => {
+        try {
+          await api.put(`/companies/${company.company_id}`, { status: newStatus })
+          showAlert(`Company ${newStatus === 'Suspended' ? 'suspended' : 'activated'} successfully!`, 'success')
+          loadCompanies()
+        } catch (err) {
+          showAlert(err.response?.data?.error || 'Failed to update company', 'error')
         }
       }
     })
@@ -122,14 +146,33 @@ const AdminCompanies = () => {
                 <td>{company.contact_email}</td>
                 <td>{company.contact_phone}</td>
                 <td>{company.office_city}</td>
-                <td>{company.status}</td>
                 <td>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDelete(company.company_id)}
-                  >
-                    Delete
-                  </button>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    background: company.status === 'Active' ? 'var(--success)' : 'var(--danger)',
+                    color: 'white'
+                  }}>
+                    {company.status}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => handleToggleStatus(company)}
+                    >
+                      {company.status === 'Active' ? 'Suspend' : 'Activate'}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDelete(company.company_id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

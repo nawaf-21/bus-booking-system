@@ -53,7 +53,8 @@ const CompanyBuses = () => {
       bus_model: bus.bus_model || '',
       bus_name: bus.bus_name || '',
       bus_type: bus.bus_type || '',
-      total_seats: bus.total_seats || ''
+      total_seats: bus.total_seats || '',
+      status: bus.status || 'Active'
     })
     setShowEditModal(true)
   }
@@ -154,9 +155,12 @@ const CompanyBuses = () => {
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button className="btn btn-sm" onClick={() => handleEdit(bus)}>Edit</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(bus.bus_id)}>
-                        Delete
-                      </button>
+                      {/* An inactive bus is already "deleted" */}
+                      {bus.status !== 'Inactive' && (
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(bus.bus_id)}>
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -220,7 +224,26 @@ const CompanyBuses = () => {
                   max="60"
                   required
                 />
+                {showEditModal && (
+                  <small style={{ color: 'var(--text-secondary)' }}>
+                    Seats can only be changed if this bus has no trips yet.
+                  </small>
+                )}
               </div>
+              {showEditModal && (
+                <div className="form-group">
+                  <label>Status *</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    required
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="submit" className="btn btn-primary">Save</button>
                 <button type="button" className="btn" onClick={() => {

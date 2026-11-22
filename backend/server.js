@@ -26,6 +26,8 @@ app.use(express.json({ limit: '100kb' }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/cities', require('./routes/cities'));
+app.use('/api/companies', require('./routes/companies'));
+app.use('/api/buses', require('./routes/buses'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/bookings', require('./routes/bookings'));
@@ -33,6 +35,9 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/promocodes', require('./routes/promocodes'));
 app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/favourites', require('./routes/favourites'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/company', require('./routes/company'));
+app.use('/api/chatbot', require('./routes/chatbot'));
 
 // Health check
 app.get('/api/health', (req, res) => {

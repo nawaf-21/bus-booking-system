@@ -27,10 +27,20 @@ const AdminBookings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const loadBookings = () => {
+  const emptyFilters = {
+    status: '',
+    from_date: '',
+    to_date: '',
+    route_id: '',
+    user_id: '',
+    company_id: ''
+  }
+
+  // The filters are passed in so Reset can search with the empty ones straight away
+  const loadBookings = (currentFilters = filters) => {
     const params = new URLSearchParams()
-    Object.keys(filters).forEach(key => {
-      if (filters[key]) params.append(key, filters[key])
+    Object.keys(currentFilters).forEach(key => {
+      if (currentFilters[key]) params.append(key, currentFilters[key])
     })
 
     api.get(`/admin/bookings/search?${params.toString()}`)
@@ -50,29 +60,13 @@ const AdminBookings = () => {
 
   const handleSearch = () => {
     setLoading(true)
-    loadBookings()
+    loadBookings(filters)
   }
 
   const handleReset = () => {
-    setFilters({
-      status: '',
-      from_date: '',
-      to_date: '',
-      route_id: '',
-      user_id: '',
-      company_id: ''
-    })
-    setTimeout(() => {
-      setFilters({
-        status: '',
-        from_date: '',
-        to_date: '',
-        route_id: '',
-        user_id: '',
-        company_id: ''
-      })
-      loadBookings()
-    }, 100)
+    setFilters(emptyFilters)
+    setLoading(true)
+    loadBookings(emptyFilters)
   }
 
   if (loading) {
@@ -93,6 +87,7 @@ const AdminBookings = () => {
               <option value="">All</option>
               <option value="Confirmed">Confirmed</option>
               <option value="Cancelled">Cancelled</option>
+              <option value="Refunded">Refunded</option>
             </select>
           </div>
           <div className="form-group">

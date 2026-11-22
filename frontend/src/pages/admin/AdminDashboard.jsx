@@ -79,7 +79,7 @@ const AdminDashboard = () => {
           <div className="value">PKR {(overview.stats?.totalRevenue || 0).toLocaleString()}</div>
         </div>
         <div className="stat-card">
-          <h3>Total Users</h3>
+          <h3>Total Passengers</h3>
           <div className="value">{overview.stats?.totalUsers || 0}</div>
         </div>
       </div>
@@ -134,7 +134,7 @@ const AdminDashboard = () => {
                   <td>{company.company_name}</td>
                   <td>{company.total_bookings}</td>
                   <td>{company.total_revenue_pkr?.toLocaleString() || 0}</td>
-                  <td>{company.avg_booking_value_pkr?.toLocaleString() || 0}</td>
+                  <td>{Math.round(company.avg_booking_value_pkr || 0).toLocaleString()}</td>
                 </tr>
               ))
             ) : (

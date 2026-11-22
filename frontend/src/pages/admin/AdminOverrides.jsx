@@ -6,6 +6,7 @@ import Alert from '../../components/Alert'
 const AdminOverrides = () => {
   const [bookings, setBookings] = useState([])
   const [trips, setTrips] = useState([])
+  const [seats, setSeats] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('cancel')
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: 'warning', title: '', message: '', onConfirm: null })
@@ -40,9 +41,24 @@ const AdminOverrides = () => {
   const loadTrips = () => {
     api.get('/admin/trips')
       .then(res => {
-        setTrips(res.data.trips.filter(t => t.trip_status === 'Scheduled'))
+        // Only upcoming scheduled trips can have seats reserved
+        setTrips(res.data.trips.filter(t => t.trip_status === 'Scheduled' && new Date(t.departure_datetime) > new Date()))
       })
       .catch(err => console.error('Error loading trips:', err))
+  }
+
+  // Load the free seats of the chosen trip
+  const loadSeats = (tripId) => {
+    setSeats([])
+    if (!tripId) return
+    api.get(`/trips/${tripId}/seats`)
+      .then(res => setSeats(res.data.seats.filter(s => s.seat_status === 'Available')))
+      .catch(err => console.error('Error loading seats:', err))
+  }
+
+  const handleTripChange = (tripId) => {
+    setFormData({ ...formData, trip_id: tripId, seat_id: '' })
+    loadSeats(tripId)
   }
 
   const showAlert = (message, type = 'info') => {
@@ -133,6 +149,7 @@ const AdminOverrides = () => {
             passenger_name: '',
             passenger_gender: ''
           })
+          setSeats([])
           loadTrips()
         } catch (err) {
           showAlert(err.response?.data?.error || 'Failed to reserve seat', 'error')
@@ -253,7 +270,8 @@ const AdminOverrides = () => {
                 required
               >
                 <option value="">Select Booking</option>
-                {bookings.map(booking => (
+                {/* Only confirmed bookings that were actually paid for can be refunded */}
+                {bookings.filter(b => Number(b.final_amount_pkr) > 0).map(booking => (
                   <option key={booking.booking_id} value={booking.booking_id}>
                     #{booking.booking_id} - {booking.passenger_name} - PKR {parseFloat(booking.final_amount_pkr || 0).toLocaleString()}
                   </option>
@@ -267,7 +285,7 @@ const AdminOverrides = () => {
                 value={formData.refund_amount}
                 onChange={(e) => setFormData({ ...formData, refund_amount: e.target.value })}
                 placeholder="Enter amount or leave blank for full refund"
-                min="0"
+                min="1"
                 step="0.01"
               />
             </div>
@@ -294,7 +312,7 @@ const AdminOverrides = () => {
               <label>Select Trip *</label>
               <select
                 value={formData.trip_id}
-                onChange={(e) => setFormData({ ...formData, trip_id: e.target.value })}
+                onChange={(e) => handleTripChange(e.target.value)}
                 required
               >
                 <option value="">Select Trip</option>
@@ -306,14 +324,20 @@ const AdminOverrides = () => {
               </select>
             </div>
             <div className="form-group">
-              <label>Seat ID *</label>
-              <input
-                type="number"
+              <label>Seat *</label>
+              <select
                 value={formData.seat_id}
                 onChange={(e) => setFormData({ ...formData, seat_id: e.target.value })}
-                placeholder="Enter seat ID"
+                disabled={!formData.trip_id}
                 required
-              />
+              >
+                <option value="">{formData.trip_id ? 'Select Seat' : 'Select a trip first'}</option>
+                {seats.map(seat => (
+                  <option key={seat.seat_id} value={seat.seat_id}>
+                    {seat.seat_number} ({seat.seat_type})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label>Passenger Name *</label>

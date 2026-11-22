@@ -83,7 +83,9 @@ const Chatbot = () => {
         role: 'assistant',
         content: unavailable
           ? 'The assistant is currently unavailable because the backend server is not connected. Please try again later.'
-          : 'Sorry, I encountered an error. Please try again later or contact support.',
+          : error.response?.status === 503
+            ? "Sorry, I can't answer questions right now. The chatbot has not been set up yet."
+            : error.response?.data?.error || 'Sorry, I encountered an error. Please try again later or contact support.',
         time: timeNow()
       }]);
     } finally {

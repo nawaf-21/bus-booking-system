@@ -139,7 +139,12 @@ const CompanyRoutes = () => {
                 <label>From City *</label>
                 <select
                   value={formData.from_city_id}
-                  onChange={(e) => setFormData({ ...formData, from_city_id: e.target.value })}
+                  onChange={(e) => {
+                    const from = e.target.value;
+                    const to = String(formData.to_city_id) === from ? '' : formData.to_city_id;
+                    setFormData({ ...formData, from_city_id: from, to_city_id: to });
+                  }}
+                  disabled={showEditModal}
                   required
                 >
                   <option value="">Select City</option>
@@ -153,6 +158,7 @@ const CompanyRoutes = () => {
                 <select
                   value={formData.to_city_id}
                   onChange={(e) => setFormData({ ...formData, to_city_id: e.target.value })}
+                  disabled={showEditModal}
                   required
                 >
                   <option value="">Select City</option>
@@ -160,6 +166,11 @@ const CompanyRoutes = () => {
                     <option key={city.city_id} value={city.city_id}>{city.city_name}</option>
                   ))}
                 </select>
+                {showEditModal && (
+                  <small style={{ color: 'var(--text-secondary)' }}>
+                    The cities of a route cannot be changed.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Distance (km)</label>
@@ -186,7 +197,7 @@ const CompanyRoutes = () => {
                   type="number"
                   value={formData.base_fare_pkr}
                   onChange={(e) => setFormData({ ...formData, base_fare_pkr: e.target.value })}
-                  min="0"
+                  min="1"
                   step="0.01"
                   required
                 />
