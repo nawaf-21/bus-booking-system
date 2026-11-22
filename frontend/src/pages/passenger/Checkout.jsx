@@ -9,6 +9,10 @@ const Checkout = () => {
   // The promo code that was checked and is included in the price shown
   const [appliedPromo, setAppliedPromo] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  // Message under the promo box: { type: 'error' | 'success', text }
+  const [promoMessage, setPromoMessage] = useState(null)
+  // Error shown above the Confirm button if the booking fails
+  const [confirmError, setConfirmError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('Card')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -45,15 +49,22 @@ const Checkout = () => {
 
   const handlePromoCode = async () => {
     const code = promoCode.trim().toUpperCase()
-    if (!code) return
+    if (!code) {
+      setPromoMessage({ type: 'error', text: 'Please type a promo code first' })
+      return
+    }
     try {
       // The preview checks the code for this trip and works out the discount
       const newPreview = await getPreview(code)
       setPreview(newPreview.data)
       setAppliedPromo(code)
       setPromoCode(code)
+      setPromoMessage({
+        type: 'success',
+        text: `${code} applied. You save PKR ${newPreview.data.pricing.discountAmount.toLocaleString()}.`
+      })
     } catch (err) {
-      alert(getErrorMessage(err, 'Invalid promo code'))
+      setPromoMessage({ type: 'error', text: getErrorMessage(err, 'This promo code could not be applied') })
     }
   }
 
@@ -63,14 +74,16 @@ const Checkout = () => {
       setPreview(newPreview.data)
       setAppliedPromo(null)
       setPromoCode('')
+      setPromoMessage(null)
     } catch (err) {
-      alert(getErrorMessage(err, 'Could not remove the promo code'))
+      setPromoMessage({ type: 'error', text: getErrorMessage(err, 'Could not remove the promo code') })
     }
   }
 
   const handleConfirm = async () => {
     if (submitting) return
     setSubmitting(true)
+    setConfirmError('')
     try {
       const res = await api.post('/bookings/confirm', {
         trip_id: bookingData.trip_id,
@@ -83,7 +96,7 @@ const Checkout = () => {
       sessionStorage.removeItem('bookingData')
       navigate(`/booking/${res.data.bookingId}/confirmation`)
     } catch (err) {
-      alert(getErrorMessage(err, 'Booking failed'))
+      setConfirmError(getErrorMessage(err, 'Booking failed. Please try again.'))
       setSubmitting(false)
     }
   }
@@ -134,7 +147,13 @@ const Checkout = () => {
           <input
             type="text"
             value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
+            onChange={(e) => {
+              setPromoCode(e.target.value)
+              setPromoMessage(null) // hide the old message while typing
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handlePromoCode()
+            }}
             placeholder="Enter promo code"
             disabled={appliedPromo !== null}
             style={{ flex: 1, padding: '8px' }}
@@ -145,6 +164,16 @@ const Checkout = () => {
             <button className="btn btn-secondary" onClick={handlePromoCode}>Apply</button>
           )}
         </div>
+        {promoMessage && (
+          <p style={{
+            marginTop: '10px',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: promoMessage.type === 'success' ? 'var(--success)' : 'var(--danger)'
+          }}>
+            {promoMessage.text}
+          </p>
+        )}
       </div>
 
       <div className="card">
@@ -196,6 +225,7 @@ const Checkout = () => {
             </span>
           </div>
         </div>
+        {confirmError && <div className="error">{confirmError}</div>}
         <button className="btn btn-primary" onClick={handleConfirm} disabled={submitting} style={{ width: '100%' }}>
           {submitting ? 'Booking...' : 'Confirm Booking'}
         </button>

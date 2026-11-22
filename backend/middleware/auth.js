@@ -52,7 +52,17 @@ const authorize = (...roles) => {
     };
 };
 
+// For pages guests can also see: check the token if there is one,
+// otherwise carry on as a guest (req.user stays empty)
+const optionalAuthenticate = (req, res, next) => {
+    if (!req.headers.authorization) {
+        return next();
+    }
+    return authenticate(req, res, next);
+};
+
 module.exports = {
     authenticate,
+    optionalAuthenticate,
     authorize
 };

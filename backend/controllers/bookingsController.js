@@ -89,26 +89,50 @@ const checkBooking = async (db, body) => {
     let promo = null;
 
     if (promo_code) {
+        const code = String(promo_code).trim().toUpperCase();
+        // Load the code with flags for each rule, so we can tell the
+        // passenger exactly why a code does not work
         const promoResult = await db.request()
-            .input('code', sql.VarChar, String(promo_code).trim().toUpperCase())
-            .input('routeId', sql.Int, trip.route_id)
-            .input('companyId', sql.Int, trip.company_id)
+            .input('code', sql.VarChar, code)
             .query(`
-                SELECT promo_id, code, discount_type, discount_value
-                FROM PromoCodes
-                WHERE code = @code
-                    AND is_active = 1
-                    AND valid_from <= GETDATE()
-                    AND valid_to >= GETDATE()
-                    AND (max_uses IS NULL OR used_count < max_uses)
-                    AND (applicable_route_id IS NULL OR applicable_route_id = @routeId)
-                    AND (applicable_company_id IS NULL OR applicable_company_id = @companyId)
+                SELECT pc.promo_id, pc.code, pc.discount_type, pc.discount_value,
+                       pc.is_active, pc.applicable_route_id, pc.applicable_company_id,
+                       CASE WHEN pc.valid_from > GETDATE() THEN 1 ELSE 0 END AS not_started,
+                       CASE WHEN pc.valid_to < GETDATE() THEN 1 ELSE 0 END AS expired,
+                       CASE WHEN pc.max_uses IS NOT NULL AND pc.used_count >= pc.max_uses THEN 1 ELSE 0 END AS used_up,
+                       c1.city_name + N' to ' + c2.city_name AS route_name,
+                       bc.company_name
+                FROM PromoCodes pc
+                LEFT JOIN Routes r ON pc.applicable_route_id = r.route_id
+                LEFT JOIN Cities c1 ON r.from_city_id = c1.city_id
+                LEFT JOIN Cities c2 ON r.to_city_id = c2.city_id
+                LEFT JOIN BusCompanies bc ON pc.applicable_company_id = bc.company_id
+                WHERE pc.code = @code
             `);
 
-        if (promoResult.recordset.length === 0) {
-            throw new BookingError('This promo code is not valid for this trip');
+        const found = promoResult.recordset[0];
+        if (!found) {
+            throw new BookingError(`There is no promo code called "${code}"`);
         }
-        promo = promoResult.recordset[0];
+        if (!found.is_active) {
+            throw new BookingError('This promo code is no longer available');
+        }
+        if (found.not_started) {
+            throw new BookingError('This promo code has not started yet');
+        }
+        if (found.expired) {
+            throw new BookingError('This promo code has expired');
+        }
+        if (found.used_up) {
+            throw new BookingError('This promo code has been fully used');
+        }
+        if (found.applicable_route_id && found.applicable_route_id !== trip.route_id) {
+            throw new BookingError(`This promo code only works on ${found.route_name} trips`);
+        }
+        if (found.applicable_company_id && found.applicable_company_id !== trip.company_id) {
+            throw new BookingError(`This promo code only works on ${found.company_name} trips`);
+        }
+        promo = found;
         discountAmount = promo.discount_type === 'Percentage'
             ? Math.round(baseAmount * Number(promo.discount_value)) / 100
             : Number(promo.discount_value);

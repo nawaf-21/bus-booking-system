@@ -13,6 +13,7 @@ const NAV_LINKS = {
     { to: '/admin/companies', label: 'Companies' },
     { to: '/admin/bookings', label: 'Bookings' },
     { to: '/admin/trips', label: 'Trips' },
+    { to: '/admin/promocodes', label: 'Promo Codes' },
     { to: '/admin/overrides', label: 'Overrides' }
   ],
   BusCompany: [

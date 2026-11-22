@@ -11,6 +11,19 @@ const toLocalInput = (value) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// Arrival = departure + the route's usual journey time (empty if either is missing)
+const arrivalFor = (departure, route) => {
+  if (!departure || !route || !route.approx_duration_min) return ''
+  return toLocalInput(new Date(departure).getTime() + route.approx_duration_min * 60000)
+}
+
+// 270 minutes -> "4h 30m"
+const formatDuration = (minutes) => {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
 const CompanyTripManagement = () => {
   const [trips, setTrips] = useState([])
   const [buses, setBuses] = useState([])
@@ -164,6 +177,38 @@ const CompanyTripManagement = () => {
     return <div className="loading">Loading...</div>
   }
 
+  // The route chosen in the form (its base fare is a suggestion for this trip's fare)
+  const selectedRoute = routes.find(r => String(r.route_id) === String(formData.route_id))
+
+  // When a new route is picked, fill the fare with that route's base fare,
+  // unless the company has already typed its own fare
+  const handleRouteChange = (routeId) => {
+    const oldRoute = routes.find(r => String(r.route_id) === String(formData.route_id))
+    const newRoute = routes.find(r => String(r.route_id) === String(routeId))
+    const fareUntouched = formData.fare_pkr === '' || (oldRoute && Number(formData.fare_pkr) === Number(oldRoute.base_fare_pkr))
+    setFormData({
+      ...formData,
+      route_id: routeId,
+      fare_pkr: newRoute && fareUntouched ? String(newRoute.base_fare_pkr) : formData.fare_pkr,
+      arrival_datetime: arrivalUntouched() ? arrivalFor(formData.departure_datetime, newRoute) : formData.arrival_datetime
+    })
+  }
+
+  // The arrival time counts as "not typed by the company" if it is empty or
+  // still the value we filled in, so it may be filled in again
+  const arrivalUntouched = () =>
+    formData.arrival_datetime === '' ||
+    formData.arrival_datetime === arrivalFor(formData.departure_datetime, selectedRoute)
+
+  // When the departure changes, move the arrival with it
+  const handleDepartureChange = (departure) => {
+    setFormData({
+      ...formData,
+      departure_datetime: departure,
+      arrival_datetime: arrivalUntouched() ? arrivalFor(departure, selectedRoute) : formData.arrival_datetime
+    })
+  }
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -235,14 +280,14 @@ const CompanyTripManagement = () => {
                 <label>Route *</label>
                 <select
                   value={formData.route_id}
-                  onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
+                  onChange={(e) => handleRouteChange(e.target.value)}
                   disabled={showEditModal}
                   required
                 >
                   <option value="">Select Route</option>
                   {routes.map(route => (
                     <option key={route.route_id} value={route.route_id}>
-                      {route.from_city} → {route.to_city} (PKR {parseFloat(route.base_fare_pkr || 0).toLocaleString()})
+                      {route.from_city} → {route.to_city} (base fare PKR {parseFloat(route.base_fare_pkr || 0).toLocaleString()})
                     </option>
                   ))}
                 </select>
@@ -277,7 +322,7 @@ const CompanyTripManagement = () => {
                 <input
                   type="datetime-local"
                   value={formData.departure_datetime}
-                  onChange={(e) => setFormData({ ...formData, departure_datetime: e.target.value })}
+                  onChange={(e) => handleDepartureChange(e.target.value)}
                   min={toLocalInput(new Date())}
                   required
                 />
@@ -291,6 +336,11 @@ const CompanyTripManagement = () => {
                   min={formData.departure_datetime || toLocalInput(new Date())}
                   required
                 />
+                {selectedRoute?.approx_duration_min > 0 && (
+                  <small style={{ color: 'var(--text-secondary)' }}>
+                    Filled in from the route's usual journey time ({formatDuration(selectedRoute.approx_duration_min)}). You can change it.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Fare per Seat (PKR) *</label>
@@ -302,6 +352,11 @@ const CompanyTripManagement = () => {
                   step="0.01"
                   required
                 />
+                <small style={{ color: 'var(--text-secondary)' }}>
+                  {selectedRoute
+                    ? `This route's base fare is PKR ${parseFloat(selectedRoute.base_fare_pkr || 0).toLocaleString()}. You can charge more or less for this trip (for example a Sleeper bus or a busy date).`
+                    : 'Pick a route first. Its base fare is filled in here, and you can change it for this trip.'}
+                </small>
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="submit" className="btn btn-primary">Save</button>

@@ -657,3 +657,32 @@ a:hover {
 .text-accent {
   color: var(--text-accent);
 }
+
+/* Small round buttons: quick dates, sort options and tabs */
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  padding: 6px 14px;
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--primary);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pill:hover {
+  background: var(--accent-soft);
+}
+
+.pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}

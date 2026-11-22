@@ -42,7 +42,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // 401 on a request that carried a token = the login has expired.
+    // A guest (no token) just gets the error, without being sent to the login page.
+    const hadToken = Boolean(error.config?.headers?.Authorization)
+    if (error.response?.status === 401 && hadToken) {
       localStorage.removeItem('token')
       delete api.defaults.headers.common['Authorization']
       if (window.location.pathname !== '/login') {

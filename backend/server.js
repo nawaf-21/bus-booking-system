@@ -22,6 +22,23 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
 app.use(cors(allowedOrigins.length > 0 ? { origin: allowedOrigins } : {}));
 app.use(express.json({ limit: '100kb' }));
 
+// Request log: prints one line in the terminal for every API call, so you
+// can watch the backend work. Request bodies are never printed (they can
+// hold passwords). Set LOG_REQUESTS=false in backend/.env to turn it off.
+if (process.env.LOG_REQUESTS !== 'false') {
+    app.use((req, res, next) => {
+        const start = Date.now();
+        // "finish" runs after the response has been sent
+        res.on('finish', () => {
+            const time = new Date().toLocaleTimeString();
+            const ms = Date.now() - start;
+            const who = req.user ? `${req.user.role} #${req.user.userId}` : 'guest';
+            console.log(`${time}  ${req.method.padEnd(6)} ${req.originalUrl}  ->  ${res.statusCode}  (${ms} ms, ${who})`);
+        });
+        next();
+    });
+}
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));

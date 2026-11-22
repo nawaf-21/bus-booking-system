@@ -12,6 +12,8 @@ const TripResults = () => {
   const { user } = useAuth()
   // Trips whose route was saved to favourites on this page
   const [savedTrips, setSavedTrips] = useState([])
+  // How the results are ordered: 'departure', 'price' or 'rating'
+  const [sortBy, setSortBy] = useState('departure')
 
   useEffect(() => {
     const params = {}
@@ -39,6 +41,11 @@ const TripResults = () => {
     }
   }
 
+  // Go back to the home page with the same search filled in
+  const backToSearch = () => {
+    navigate(`/?${searchParams.toString()}`)
+  }
+
   const handleSelectTrip = (tripId) => {
     navigate(`/trips/${tripId}/seats`)
   }
@@ -47,19 +54,46 @@ const TripResults = () => {
     return <div className="loading">Loading trips...</div>
   }
 
+  // Sort a copy of the list (never change state directly).
+  // Rating: highest first, trips with no rating last. Ties go by departure time.
+  const byDeparture = (a, b) => new Date(a.departure_datetime) - new Date(b.departure_datetime)
+  const sortedTrips = [...trips].sort((a, b) => {
+    if (sortBy === 'price') return a.fare_pkr - b.fare_pkr || byDeparture(a, b)
+    if (sortBy === 'rating') return (b.avg_rating || 0) - (a.avg_rating || 0) || byDeparture(a, b)
+    return byDeparture(a, b)
+  })
+
   return (
     <div className="container">
+      <button className="pill" onClick={backToSearch} style={{ marginBottom: '12px' }}>
+        ← Change search
+      </button>
       <h1>Available Trips</h1>
       {error && <div className="error">{error}</div>}
+      {trips.length > 1 && (
+        <div className="pill-group" style={{ alignItems: 'center', marginBottom: '16px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '14px', marginRight: '4px' }}>Sort by:</span>
+          <button className={`pill ${sortBy === 'departure' ? 'active' : ''}`} onClick={() => setSortBy('departure')}>
+            Earliest departure
+          </button>
+          <button className={`pill ${sortBy === 'price' ? 'active' : ''}`} onClick={() => setSortBy('price')}>
+            Lowest price
+          </button>
+          <button className={`pill ${sortBy === 'rating' ? 'active' : ''}`} onClick={() => setSortBy('rating')}>
+            Best rating
+          </button>
+        </div>
+      )}
       {error ? null : trips.length === 0 ? (
         <div className="card fade-in">
           <div style={{ textAlign: 'center', padding: '3rem' }}>
             <h2 style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '1.25rem' }}>No trips found</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Try adjusting your search criteria</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>Try another date, or remove the bus type or company filter.</p>
+            <button className="btn btn-primary" onClick={backToSearch}>Change search</button>
           </div>
         </div>
       ) : (
-        trips.map(trip => (
+        sortedTrips.map(trip => (
           <div key={trip.trip_id} className="trip-card fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
               <div style={{ flex: 1, minWidth: '240px' }}>

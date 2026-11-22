@@ -24,6 +24,7 @@ import AdminTrips from './pages/admin/AdminTrips'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminBookings from './pages/admin/AdminBookings'
 import AdminOverrides from './pages/admin/AdminOverrides'
+import AdminPromoCodes from './pages/admin/AdminPromoCodes'
 
 // Bus Company pages
 import CompanyDashboard from './pages/company/CompanyDashboard'
@@ -58,6 +59,7 @@ function App() {
           <Route path="/admin/bookings" element={<PrivateRoute role="Admin"><AdminBookings /></PrivateRoute>} />
           <Route path="/admin/trips" element={<PrivateRoute role="Admin"><AdminTrips /></PrivateRoute>} />
           <Route path="/admin/overrides" element={<PrivateRoute role="Admin"><AdminOverrides /></PrivateRoute>} />
+          <Route path="/admin/promocodes" element={<PrivateRoute role="Admin"><AdminPromoCodes /></PrivateRoute>} />
 
           {/* Bus Company routes */}
           <Route path="/company" element={<PrivateRoute role="BusCompany"><CompanyDashboard /></PrivateRoute>} />

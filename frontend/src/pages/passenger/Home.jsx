@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api, { getErrorMessage } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 
@@ -8,12 +8,15 @@ const Home = () => {
   const [companies, setCompanies] = useState([])
   const [favouriteRoutes, setFavouriteRoutes] = useState([])
   const [loadError, setLoadError] = useState('')
+  // Coming back from the results page ("Change search") puts the old search
+  // in the URL, so the form starts filled in
+  const [searchParams] = useSearchParams()
   const [searchData, setSearchData] = useState({
-    from_city_id: '',
-    to_city_id: '',
-    travel_date: '',
-    bus_type: '',
-    company_id: ''
+    from_city_id: searchParams.get('from_city_id') || '',
+    to_city_id: searchParams.get('to_city_id') || '',
+    travel_date: searchParams.get('travel_date') || '',
+    bus_type: searchParams.get('bus_type') || '',
+    company_id: searchParams.get('company_id') || ''
   })
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -40,6 +43,17 @@ const Home = () => {
     })
     navigate(`/trips/search?${params.toString()}`)
   }
+
+  // Swap From and To (for a return trip)
+  const handleSwap = () => {
+    setSearchData({ ...searchData, from_city_id: searchData.to_city_id, to_city_id: searchData.from_city_id })
+  }
+
+  // Dates as YYYY-MM-DD in local time (what a date input needs)
+  const today = new Date().toLocaleDateString('en-CA')
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = tomorrowDate.toLocaleDateString('en-CA')
 
   const handleFavouriteClick = (route) => {
     setSearchData({
@@ -88,7 +102,19 @@ const Home = () => {
               </select>
             </div>
             <div className="form-group">
-              <label>To</label>
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                To
+                <button
+                  type="button"
+                  className="pill"
+                  onClick={handleSwap}
+                  disabled={!searchData.from_city_id && !searchData.to_city_id}
+                  title="Swap From and To"
+                  style={{ padding: '2px 10px' }}
+                >
+                  ⇄ Swap
+                </button>
+              </label>
               <select
                 value={searchData.to_city_id}
                 onChange={(e) => setSearchData({ ...searchData, to_city_id: e.target.value })}
@@ -106,8 +132,24 @@ const Home = () => {
                 type="date"
                 value={searchData.travel_date}
                 onChange={(e) => setSearchData({ ...searchData, travel_date: e.target.value })}
-                min={new Date().toLocaleDateString('en-CA')}
+                min={today}
               />
+              <div className="pill-group" style={{ marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className={`pill ${searchData.travel_date === today ? 'active' : ''}`}
+                  onClick={() => setSearchData({ ...searchData, travel_date: today })}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`pill ${searchData.travel_date === tomorrow ? 'active' : ''}`}
+                  onClick={() => setSearchData({ ...searchData, travel_date: tomorrow })}
+                >
+                  Tomorrow
+                </button>
+              </div>
             </div>
             <div className="form-group">
               <label>Bus Type</label>

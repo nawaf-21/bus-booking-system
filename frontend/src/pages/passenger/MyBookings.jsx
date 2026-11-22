@@ -13,6 +13,8 @@ const MyBookings = () => {
   const [reviewBooking, setReviewBooking] = useState(null)
   const [rating, setRating] = useState(5)
   const [comments, setComments] = useState('')
+  // Which tab is open: 'upcoming', 'past' or 'cancelled'
+  const [tab, setTab] = useState('upcoming')
 
   useEffect(() => {
     api.get('/bookings/my')
@@ -64,6 +66,25 @@ const MyBookings = () => {
     return <div className="loading">Loading...</div>
   }
 
+  // Put each booking in a tab:
+  // upcoming = active and the bus has not left, past = active and the bus has left,
+  // cancelled = cancelled or refunded
+  const now = new Date()
+  const isActive = (b) => b.booking_status === 'Confirmed' || b.booking_status === 'Pending'
+  const upcoming = bookings
+    .filter(b => isActive(b) && new Date(b.departure_datetime) > now)
+    .sort((a, b) => new Date(a.departure_datetime) - new Date(b.departure_datetime)) // soonest first
+  const past = bookings
+    .filter(b => isActive(b) && new Date(b.departure_datetime) <= now)
+    .sort((a, b) => new Date(b.departure_datetime) - new Date(a.departure_datetime)) // latest first
+  const cancelled = bookings.filter(b => !isActive(b))
+  const tabs = [
+    { key: 'upcoming', label: 'Upcoming', list: upcoming, empty: 'No upcoming trips. Search for your next journey!' },
+    { key: 'past', label: 'Past', list: past, empty: 'No past trips yet.' },
+    { key: 'cancelled', label: 'Cancelled', list: cancelled, empty: 'No cancelled bookings.' }
+  ]
+  const currentTab = tabs.find(t => t.key === tab)
+
   return (
     <div className="container">
       <div style={{ marginBottom: '2rem' }}>
@@ -78,16 +99,27 @@ const MyBookings = () => {
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 400 }}>View and manage your reservations</p>
       </div>
-      {bookings.length === 0 ? (
+      <div className="pill-group" style={{ marginBottom: '20px' }}>
+        {tabs.map(t => (
+          <button key={t.key} className={`pill ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+            {t.label} ({t.list.length})
+          </button>
+        ))}
+      </div>
+      {currentTab.list.length === 0 ? (
         <div className="card fade-in">
           <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <h2 style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '1.25rem' }}>No bookings yet</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Start booking your next journey!</p>
+            <h2 style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '1.25rem' }}>
+              {bookings.length === 0 ? 'No bookings yet' : currentTab.empty}
+            </h2>
+            {bookings.length === 0 && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Start booking your next journey!</p>
+            )}
           </div>
         </div>
       ) : (
-        bookings.map((booking, index) => (
-          <div key={booking.booking_id} className="trip-card fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+        currentTab.list.map((booking, index) => (
+          <div key={booking.booking_id} className="trip-card fade-in" style={{ animationDelay: `${Math.min(index, 5) * 0.1}s` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
               <div style={{ flex: 1, minWidth: '300px' }}>
                 <h2 style={{ 

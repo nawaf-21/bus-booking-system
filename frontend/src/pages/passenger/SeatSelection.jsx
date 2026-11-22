@@ -105,8 +105,12 @@ const SeatSelection = () => {
 
   return (
     <div className="container">
+      {/* Back to the trip list (the previous page in the browser history) */}
+      <button className="pill" onClick={() => navigate(-1)} style={{ marginBottom: '12px' }}>
+        ← Back to trips
+      </button>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ 
+        <h1 style={{
           fontSize: '2rem',
           marginBottom: '0.5rem',
           color: 'var(--text-primary)',

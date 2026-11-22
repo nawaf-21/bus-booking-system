@@ -173,8 +173,10 @@ const pricing = (trip, seatCount, promoCode) => {
   let discountAmount = 0
   if (promoCode) {
     const promo = db.promoCodes.find(p => p.code === String(promoCode).trim().toUpperCase())
-    if (!promo) fail(400, 'Invalid or expired promo code')
-    discountAmount = Math.round(baseAmount * promo.discount_percent / 100)
+    if (!promo || promo.is_active === false) fail(400, 'Invalid or expired promo code')
+    discountAmount = promo.discount_type === 'Fixed'
+      ? Math.min(Number(promo.discount_value), baseAmount)
+      : Math.round(baseAmount * (promo.discount_value ?? promo.discount_percent) / 100)
   }
   return { baseAmount, discountAmount, finalAmount: baseAmount - discountAmount }
 }
@@ -277,6 +279,38 @@ const handlers = [
   }],
 
   // Booking flow
+  // Admin promo codes page (simple version for demo mode)
+  ['get', '/promocodes', () => ({
+    promoCodes: db.promoCodes.map((p, i) => ({
+      promo_id: i + 1,
+      code: p.code,
+      description: p.description || '',
+      discount_type: p.discount_type || 'Percentage',
+      discount_value: p.discount_value ?? p.discount_percent,
+      valid_from: p.valid_from || new Date(Date.now() - 30 * 864e5).toISOString(),
+      valid_to: p.valid_to || new Date(Date.now() + 365 * 864e5).toISOString(),
+      max_uses: p.max_uses || null,
+      used_count: 0,
+      is_active: p.is_active !== false
+    }))
+  })],
+  ['post', '/promocodes', ({ body }) => {
+    const code = String(body.code || '').trim().toUpperCase()
+    if (db.promoCodes.some(p => p.code === code)) fail(400, 'A promo code with this name already exists')
+    db.promoCodes.push({
+      code, description: body.description, discount_type: body.discount_type,
+      discount_value: Number(body.discount_value), valid_from: body.valid_from, valid_to: body.valid_to,
+      max_uses: body.max_uses ? Number(body.max_uses) : null, is_active: true
+    })
+    return { message: 'Promo code created successfully' }
+  }],
+  ['put', '/promocodes/:id', (ctx) => {
+    const promo = db.promoCodes[ctx.id - 1] || fail(404, 'Promo code not found')
+    for (const key of ['description', 'discount_value', 'valid_from', 'valid_to', 'max_uses', 'is_active']) {
+      if (ctx.body[key] !== undefined) promo[key] = ctx.body[key]
+    }
+    return { message: 'Promo code updated successfully' }
+  }],
   ['post', '/promocodes/validate', ({ body }) => {
     const promo = db.promoCodes.find(p => p.code === String(body.code || '').trim().toUpperCase())
     if (!promo) fail(400, 'Invalid or expired promo code')
